@@ -30,7 +30,8 @@ public sealed class SettingsForm : Form
     private TextBox _txtOfflinePwd, _txtOfflinePwd2;
     private TextBox _txtSettingsPwd, _txtSettingsPwd2;
     private CheckBox _chkBlockNav, _chkAllowZoom, _chkAllowBack, _chkClearSession;
-    private Label _lblOfflineState, _lblSettingsPwdState, _lblSavePath, _lblTest;
+    private CheckBox _chkAutoStart, _chkAutoStartAllUsers;
+    private Label _lblOfflineState, _lblSettingsPwdState, _lblSavePath, _lblTest, _lblAutoStartState;
     private Button _btnClearOffline, _btnClearSettingsPwd;
     private Button _btnSave, _btnCancel, _btnOpenLog;
 
@@ -212,6 +213,37 @@ public sealed class SettingsForm : Form
         };
         Add(_chkClearSession); y += 30;
 
+        // ---- Startup -----------------------------------------------------------
+        Add(Header("Saat Windows menyala (startup)", y)); y += 24;
+        Add(new Label
+        {
+            Text = "Jalankan aplikasi ini otomatis saat Windows login, sehingga siswa tidak perlu membukanya.",
+            Location = new Point(16, y), Size = new Size(600, 18), ForeColor = Color.DimGray,
+        }); y += 24;
+
+        _chkAutoStart = new CheckBox
+        {
+            Text = "Jalankan otomatis saat Windows menyala",
+            Location = new Point(16, y),
+            AutoSize = true,
+        };
+        _chkAutoStart.CheckedChanged += (s, e) =>
+        {
+            _chkAutoStartAllUsers.Enabled = _chkAutoStart.Checked;
+        };
+        Add(_chkAutoStart); y += 24;
+
+        _chkAutoStartAllUsers = new CheckBox
+        {
+            Text = "Untuk SEMUA pengguna Windows (perlu dijalankan sebagai Administrator)",
+            Location = new Point(34, y),
+            AutoSize = true,
+        };
+        Add(_chkAutoStartAllUsers); y += 24;
+
+        _lblAutoStartState = new Label { Location = new Point(34, y), Size = new Size(600, 20), ForeColor = Color.DimGray };
+        Add(_lblAutoStartState); y += 30;
+
         // ---- Footer info -------------------------------------------------------
         _lblSavePath = new Label { Location = new Point(16, y), Size = new Size(660, 36), ForeColor = Color.DimGray };
         Add(_lblSavePath); y += 42;
@@ -272,6 +304,12 @@ public sealed class SettingsForm : Form
         UpdateOfflineState();
         UpdateSettingsPwdState();
 
+        // Reflect the real registry state (the source of truth for auto-start).
+        _chkAutoStart.Checked = AutoStart.IsEnabled || _settings.AutoStart;
+        _chkAutoStartAllUsers.Checked = AutoStart.IsEnabledForAllUsers || _settings.AutoStartAllUsers;
+        _chkAutoStartAllUsers.Enabled = _chkAutoStart.Checked;
+        UpdateAutoStartState();
+
         var webview = GetWebView2Version();
         _lblSavePath.Text =
             $"Disimpan di: {_settings.SettingsPath}\n" +
@@ -290,6 +328,12 @@ public sealed class SettingsForm : Form
         var set = !string.IsNullOrWhiteSpace(_settings.SettingsPasswordHash);
         _lblSettingsPwdState.Text = set ? "Status: SUDAH diatur." : "Status: belum diatur (bebas dibuka).";
         _lblSettingsPwdState.ForeColor = set ? Color.DarkGreen : Color.DimGray;
+    }
+
+    private void UpdateAutoStartState()
+    {
+        _lblAutoStartState.Text = "Status registry: " + AutoStart.Describe();
+        _lblAutoStartState.ForeColor = AutoStart.IsEnabled ? Color.DarkGreen : Color.DimGray;
     }
 
     private void BtnClearOffline_Click(object sender, EventArgs e)
@@ -385,18 +429,34 @@ public sealed class SettingsForm : Form
         _settings.AllowZoom = _chkAllowZoom.Checked;
         _settings.AllowBackNavigation = _chkAllowBack.Checked;
         _settings.ClearSessionOnQuit = _chkClearSession.Checked;
+        _settings.AutoStart = _chkAutoStart.Checked;
+        _settings.AutoStartAllUsers = _chkAutoStartAllUsers.Checked;
 
         try
         {
             var path = _settings.Save();
+
+            // Apply the auto-start setting to the registry (the real mechanism Windows reads).
+            var autoStartOk = AutoStart.Apply(_chkAutoStart.Checked, _chkAutoStartAllUsers.Checked, out var autoStartError);
+
             UpdateOfflineState();
             UpdateSettingsPwdState();
+            UpdateAutoStartState();
             _lblSavePath.Text = $"Disimpan di: {path}\nWebView2 Runtime: {GetWebView2Version()}";
 
-            MessageBox.Show(this,
-                "Pengaturan tersimpan di:\n" + path +
-                (_standalone ? "\n\nJalankan CbtKiosk.exe (tanpa argumen) untuk memulai mode ujian." : ""),
-                "Pengaturan", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            var message = "Pengaturan tersimpan di:\n" + path +
+                (_standalone ? "\n\nJalankan CbtKiosk.exe (tanpa argumen) untuk memulai mode ujian." : "");
+
+            if (!autoStartOk)
+            {
+                message += "\n\nPERINGATAN: pengaturan auto-start gagal diterapkan.\n" + autoStartError +
+                    (_chkAutoStartAllUsers.Checked
+                        ? "\n\nJalankan aplikasi sebagai Administrator untuk opsi 'semua pengguna'."
+                        : "");
+            }
+
+            MessageBox.Show(this, message, "Pengaturan", MessageBoxButtons.OK,
+                autoStartOk ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
             DialogResult = DialogResult.OK;
             Close();
         }

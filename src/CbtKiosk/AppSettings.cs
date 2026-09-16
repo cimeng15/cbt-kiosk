@@ -40,6 +40,13 @@ public sealed class AppSettings
     /// </summary>
     public bool ClearSessionOnQuit { get; set; } = true;
 
+    // ---- Auto-start ------------------------------------------------------------
+    /// <summary>Start the application automatically when Windows starts (at user logon).</summary>
+    public bool AutoStart { get; set; } = false;
+
+    /// <summary>When auto-starting, register for all users (HKLM) instead of the current user (HKCU).</summary>
+    public bool AutoStartAllUsers { get; set; } = false;
+
     // ---- Non-persisted helpers -------------------------------------------------
     [JsonIgnore] public string SettingsPath { get; set; } = "";
     [JsonIgnore] public string LoadSource { get; set; } = "";

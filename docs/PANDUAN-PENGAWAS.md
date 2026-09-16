@@ -115,6 +115,7 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v Shell /t
 | "Password sudah kedaluwarsa" | Perbarui password di panel CBT (menu pengaturan kios). |
 | "Tidak dapat menghubungi server CBT…" | Internet/server mati dan **password cadangan offline belum diatur**. Atur lewat Pengaturan (bagian C). |
 | Tidak bisa menyimpan Pengaturan | Jalankan sebagai **Administrator**, atau gunakan `CbtKiosk.exe --settings`. |
+| Aplikasi tidak ikut menyala saat Windows login | Buka Pengaturan → bagian *Saat Windows menyala (startup)* → centang opsi, lalu **Simpan**. Untuk "semua pengguna" jalankan sebagai Administrator. |
 | Aplikasi tetap terkunci & pengawas lupa password | Lihat bagian F. |
 | Ikon tray tidak terlihat | Klik panah **▲** di pojok kanan bawah untuk menampilkan ikon tersembunyi. |
 | Pintasan tidak berfungsi (F5 / Ctrl+Alt+Q) | Klik dulu di area halaman ujian agar aplikasi menjadi jendela aktif, lalu coba lagi. Pintasan aktif selama aplikasi berjalan. |

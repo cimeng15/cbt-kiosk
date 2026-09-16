@@ -26,6 +26,7 @@ internal static class Program
         Logger.Info($"Kiosk endpoint: {settings.KioskUrl}");
         Logger.Info($"Fallback URL  : {(string.IsNullOrWhiteSpace(settings.FallbackUrl) ? "(none)" : settings.FallbackUrl)}");
         Logger.Info($"Offline pwd   : {(string.IsNullOrWhiteSpace(settings.OfflineFallbackPasswordHash) ? "(not set)" : "(set)")}");
+        Logger.Info($"Auto-start    : {AutoStart.Describe()}");
 
         var openSettings = args.Any(a =>
             a.Equals("--settings", StringComparison.OrdinalIgnoreCase) ||

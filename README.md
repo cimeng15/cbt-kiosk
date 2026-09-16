@@ -23,6 +23,7 @@ diambil dari server CBT** — dengan **password cadangan offline** bila internet
 | **Fallback online** | Endpoint kedua (opsional) dicoba bila endpoint utama tidak terjawab. |
 | **Fallback offline** | Password cadangan yang disimpan di komputer — dipakai **hanya** bila server sama sekali tidak terjangkau. Diatur di menu Pengaturan. |
 | **Hapus sesi saat keluar** | Cookies & data situs dihapus saat keluar (dan sisa data dibersihkan saat start), sehingga siswa **wajib login ulang** tiap sesi. Bisa dimatikan di Pengaturan. |
+| **Auto-start saat Windows menyala** | Opsi di Pengaturan untuk menjalankan aplikasi otomatis saat Windows login (per-pengguna, atau semua pengguna bila dijalankan sebagai Administrator). |
 | **Pengaturan terproteksi** | Menu Pengaturan bisa dikunci dengan password agar tidak dibuka siswa. |
 | **Log** | Semua kejadian penting dicatat untuk audit/pengawas. |
 
@@ -89,8 +90,13 @@ Aplikasi bersifat **portabel** (self-contained): tidak perlu memasang .NET.
    - **Fallback online** — opsional, mis. endpoint cadangan bila ada.
    - **Password cadangan offline** — isi bila ingin ada password darurat saat internet mati.
    - **Password pengaturan** — isi agar siswa tidak bisa membuka Pengaturan dari dalam ujian.
+   - **Jalankan otomatis saat Windows menyala** — centang bila ingin aplikasi terbuka sendiri saat
+     komputer login (lihat bagian 3.5).
 3. Klik **Tes koneksi** untuk memastikan endpoint terjangkau.
 4. Klik **Simpan**.
+
+> Tombol **Simpan** ada di bar bawah jendela Pengaturan (selalu terlihat). Isi pengaturan bisa
+> di-scroll bila layar kecil.
 
 Pengaturan disimpan di:
 
@@ -120,7 +126,23 @@ Agar siswa benar-benar tidak bisa keluar tanpa password, ganti shell akun siswa 
 `explorer.exe` ke aplikasi ini (Windows otomatis keluar setelah aplikasi ditutup). Cocok untuk
 akun khusus ujian. Lihat `docs/PANDUAN-PENGAWAS.md` bagian "Mode Kios Kuat".
 
----
+### 3.5 Menjalankan otomatis saat Windows menyala
+
+Di jendela **Pengaturan** → bagian **"Saat Windows menyala (startup)"**:
+
+1. Centang **"Jalankan otomatis saat Windows menyala"**.
+2. Pilih cakupan:
+   - **tidak** centang *"Untuk SEMUA pengguna Windows"* → hanya pengguna yang sedang login
+     (ditulis ke `HKCU\...\Run`, **tidak** perlu Administrator).
+   - centang *"Untuk SEMUA pengguna Windows"* → semua akun (ditulis ke `HKLM\...\Run`,
+     **perlu dijalankan sebagai Administrator**).
+3. Klik **Simpan**. Status registry ditampilkan di bawah kotak centang.
+
+Aplikasi akan otomatis terbuka (mode kios) setiap kali Windows login. Untuk mematikan, hilangkan
+centang lalu **Simpan**.
+
+> Bila opsi "semua pengguna" gagal (tanpa hak Administrator), aplikasi menampilkan peringatan —
+> pengaturan lain tetap tersimpan.
 
 ## 4. Membangun sendiri
 
@@ -162,7 +184,8 @@ cbt-kiosk/
 ├─ src/CbtKiosk/
 │  ├─ Program.cs          # titik masuk, deteksi --settings, single-instance, bersih-bersih sesi
 │  ├─ MainForm.cs         # jendela kios, WebView2, lockdown, pintasan keyboard, hapus sesi
-│  ├─ SettingsForm.cs     # jendela pengaturan (URL, password, lockdown)
+│  ├─ SettingsForm.cs     # jendela pengaturan (URL, password, lockdown, startup)
+│  ├─ AutoStart.cs        # daftar/hapus auto-start di registry (Run key)
 │  ├─ PasswordPrompt.cs   # dialog password
 │  ├─ KioskClient.cs      # HTTP ke endpoint CBT + validasi password + fallback
 │  ├─ AppSettings.cs      # model pengaturan + baca/tulis JSON
