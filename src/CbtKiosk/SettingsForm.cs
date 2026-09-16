@@ -31,6 +31,8 @@ public sealed class SettingsForm : Form
     private TextBox _txtSettingsPwd, _txtSettingsPwd2;
     private CheckBox _chkBlockNav, _chkAllowZoom, _chkAllowBack, _chkClearSession;
     private CheckBox _chkAutoStart, _chkAutoStartAllUsers;
+    private ComboBox _cboStartupMethod;
+    private Button _btnVerifyStartup;
     private Label _lblOfflineState, _lblSettingsPwdState, _lblSavePath, _lblTest, _lblAutoStartState;
     private Button _btnClearOffline, _btnClearSettingsPwd;
     private Button _btnSave, _btnCancel, _btnOpenLog;
@@ -241,8 +243,28 @@ public sealed class SettingsForm : Form
         };
         Add(_chkAutoStartAllUsers); y += 24;
 
+        Add(new Label { Text = "Metode startup:", Location = new Point(34, y + 3), AutoSize = true });
+        _cboStartupMethod = new ComboBox
+        {
+            Location = new Point(140, y),
+            Width = 300,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+        };
+        _cboStartupMethod.Items.Add("Registry Run key (bawaan)");
+        _cboStartupMethod.Items.Add("Scheduled Task (lebih andal)");
+        Add(_cboStartupMethod); y += 26;
+
+        Add(new Label
+        {
+            Text = "Bila registry tidak jalan, coba 'Scheduled Task'.",
+            Location = new Point(34, y), Size = new Size(600, 18), ForeColor = Color.Gray,
+        }); y += 24;
+
         _lblAutoStartState = new Label { Location = new Point(34, y), Size = new Size(600, 20), ForeColor = Color.DimGray };
-        Add(_lblAutoStartState); y += 30;
+        Add(_lblAutoStartState);
+        _btnVerifyStartup = new Button { Text = "Periksa startup", Location = new Point(520, y - 3), Size = new Size(110, 24) };
+        _btnVerifyStartup.Click += BtnVerifyStartup_Click;
+        Add(_btnVerifyStartup); y += 32;
 
         // ---- Footer info -------------------------------------------------------
         _lblSavePath = new Label { Location = new Point(16, y), Size = new Size(660, 36), ForeColor = Color.DimGray };
@@ -308,6 +330,8 @@ public sealed class SettingsForm : Form
         _chkAutoStart.Checked = AutoStart.IsEnabled || _settings.AutoStart;
         _chkAutoStartAllUsers.Checked = AutoStart.IsEnabledForAllUsers || _settings.AutoStartAllUsers;
         _chkAutoStartAllUsers.Enabled = _chkAutoStart.Checked;
+        _cboStartupMethod.SelectedIndex =
+            string.Equals(_settings.StartupMethod, AutoStart.MethodTask, StringComparison.OrdinalIgnoreCase) ? 1 : 0;
         UpdateAutoStartState();
 
         var webview = GetWebView2Version();
@@ -334,6 +358,13 @@ public sealed class SettingsForm : Form
     {
         _lblAutoStartState.Text = "Status registry: " + AutoStart.Describe();
         _lblAutoStartState.ForeColor = AutoStart.IsEnabled ? Color.DarkGreen : Color.DimGray;
+    }
+
+    private void BtnVerifyStartup_Click(object sender, EventArgs e)
+    {
+        var report = AutoStart.Verify();
+        Logger.Info("Startup check:\n" + report);
+        MessageBox.Show(this, report, "Periksa Startup", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     private void BtnClearOffline_Click(object sender, EventArgs e)
@@ -431,13 +462,15 @@ public sealed class SettingsForm : Form
         _settings.ClearSessionOnQuit = _chkClearSession.Checked;
         _settings.AutoStart = _chkAutoStart.Checked;
         _settings.AutoStartAllUsers = _chkAutoStartAllUsers.Checked;
+        _settings.StartupMethod = _cboStartupMethod.SelectedIndex == 1 ? AutoStart.MethodTask : AutoStart.MethodRegistry;
 
         try
         {
             var path = _settings.Save();
 
-            // Apply the auto-start setting to the registry (the real mechanism Windows reads).
-            var autoStartOk = AutoStart.Apply(_chkAutoStart.Checked, _chkAutoStartAllUsers.Checked, out var autoStartError);
+            // Apply the auto-start setting (the real mechanism Windows reads).
+            var autoStartOk = AutoStart.Apply(_chkAutoStart.Checked, _chkAutoStartAllUsers.Checked,
+                _settings.StartupMethod, out var autoStartError);
 
             UpdateOfflineState();
             UpdateSettingsPwdState();

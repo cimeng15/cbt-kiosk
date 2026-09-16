@@ -115,7 +115,7 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v Shell /t
 | "Password sudah kedaluwarsa" | Perbarui password di panel CBT (menu pengaturan kios). |
 | "Tidak dapat menghubungi server CBT…" | Internet/server mati dan **password cadangan offline belum diatur**. Atur lewat Pengaturan (bagian C). |
 | Tidak bisa menyimpan Pengaturan | Jalankan sebagai **Administrator**, atau gunakan `CbtKiosk.exe --settings`. |
-| Aplikasi tidak ikut menyala saat Windows login | Buka Pengaturan → bagian *Saat Windows menyala (startup)* → centang opsi, lalu **Simpan**. Untuk "semua pengguna" jalankan sebagai Administrator. |
+| Aplikasi tidak ikut menyala saat Windows login | Lihat bagian **G. Startup tidak jalan** di bawah. |
 | Aplikasi tetap terkunci & pengawas lupa password | Lihat bagian F. |
 | Ikon tray tidak terlihat | Klik panah **▲** di pojok kanan bawah untuk menampilkan ikon tersembunyi. |
 | Pintasan tidak berfungsi (F5 / Ctrl+Alt+Q) | Klik dulu di area halaman ujian agar aplikasi menjadi jendela aktif, lalu coba lagi. Pintasan aktif selama aplikasi berjalan. |
@@ -130,6 +130,51 @@ C:\ProgramData\CbtKiosk\logs\cbtkiosk-YYYYMMDD.log
 ```
 
 Tombol **Buka folder log** ada di jendela Pengaturan.
+
+---
+
+## G. Startup tidak jalan (sudah disetel tapi tidak muncul saat booting)
+
+Gejala: entri sudah muncul di **Task Manager → Startup**, tetapi aplikasi tidak terbuka setelah
+Windows login. Penyebab tersering, berurutan:
+
+1. **File diblokir Windows (Mark of the Web).** `.exe` yang diunduh dari internet ditandai
+   "berasal dari internet" dan Windows menolak menjalankannya otomatis (tidak ada yang bisa klik
+   *"Run anyway"* saat startup).
+   - **Solusi:** klik kanan `CbtKiosk.exe` → **Properties** → centang **Unblock** → OK.
+   - Sejak v1.5.0 aplikasi **mencoba menghapus tanda ini sendiri** setiap kali dibuka.
+2. **Path di registry salah / file dipindah.** Jika `CbtKiosk.exe` dipindah setelah setting,
+   entri menunjuk file yang tidak ada lagi.
+   - **Solusi:** taruh `.exe` di lokasi permanen (mis. `C:\CbtKiosk\`), lalu buka Pengaturan →
+     **Simpan** ulang. Sejak v1.5.0 aplikasi **memperbaiki path ini sendiri** saat dijalankan.
+3. **Status "Disabled" di Task Manager.** Buka Task Manager → **Startup** → klik kanan entri →
+   **Enable**.
+4. **Kebijakan grup (Group Policy) menonaktifkan Run key.** Umum di komputer sekolah/managed.
+   - **Solusi:** gunakan metode **Scheduled Task** (lihat langkah di bawah).
+5. **Cakupan "semua pengguna" tanpa hak Administrator** sehingga entri tidak pernah ditulis.
+
+### Langkah diagnosa cepat
+
+1. Buka **Pengaturan** (`CbtKiosk.exe --settings`) → bagian *Saat Windows menyala (startup)*.
+2. Klik tombol **"Periksa startup"**. Akan muncul laporan: path aplikasi, isi registry Run,
+   apakah file di path itu benar-benar ada, dan status scheduled task.
+3. Ikuti hasilnya:
+   - *"file di path itu ada: TIDAK"* → path salah; **Simpan** ulang dari lokasi file yang benar.
+   - *"Registry Run: TIDAK ada"* → centang opsi lalu **Simpan** (sebagai Administrator bila "semua pengguna").
+   - Bila registry sudah benar tetapi tetap tidak jalan → coba **Scheduled Task**.
+
+### Ganti ke metode Scheduled Task (lebih andal)
+
+Di **Pengaturan** → *Metode startup* → pilih **"Scheduled Task (lebih andal)"** → **Simpan**.
+Aplikasi akan membuat task Windows bernama `CbtKiosk` dengan pemicu **"At logon"**. Cek hasilnya
+di **Task Scheduler** (`taskschd.msc`) → *Task Scheduler Library* → `CbtKiosk`.
+
+> Metode Scheduled Task juga bekerja pada kebijakan yang memblokir Run key, dan bisa dibuat
+> berjalan dengan hak tertinggi.
+
+### Cara uji tanpa reboot
+
+Jalankan `schtasks /Run /TN CbtKiosk` (metode task) — atau — log off lalu login kembali.
 
 ---
 

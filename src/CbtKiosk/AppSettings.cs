@@ -47,6 +47,9 @@ public sealed class AppSettings
     /// <summary>When auto-starting, register for all users (HKLM) instead of the current user (HKCU).</summary>
     public bool AutoStartAllUsers { get; set; } = false;
 
+    /// <summary>Auto-start mechanism: "registry" (Run key) or "task" (Task Scheduler, on logon).</summary>
+    public string StartupMethod { get; set; } = "registry";
+
     // ---- Non-persisted helpers -------------------------------------------------
     [JsonIgnore] public string SettingsPath { get; set; } = "";
     [JsonIgnore] public string LoadSource { get; set; } = "";

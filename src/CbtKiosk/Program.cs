@@ -19,6 +19,14 @@ internal static class Program
 
         var settings = AppSettings.Load();
 
+        // Unblock the executable (remove the "downloaded from the internet" mark) so Windows does
+        // not silently refuse to run it at start-up via SmartScreen. Needs no administrator rights
+        // for files the user owns; fails silently otherwise.
+        if (UnblockSelf()) Logger.Info("Removed the Mark-of-the-Web from the executable.");
+
+        // Self-heal the auto-start registration (e.g. the .exe was moved after it was set up).
+        AutoStart.EnsureMatches(settings);
+
         Logger.Info("========================================================");
         Logger.Info($"CbtKiosk start - pid {Environment.ProcessId}, args=[{string.Join(' ', args)}]");
         Logger.Info($"Settings file : {settings.SettingsPath}");
@@ -69,6 +77,31 @@ internal static class Program
                 MainForm.ClearSessionArtifactsOnDisk();
                 Logger.Info("Session cleanup finished.");
             }
+        }
+    }
+
+    /// <summary>
+    /// Removes the Zone.Identifier alternate data stream ("Mark of the Web") from this executable.
+    /// Files downloaded from the internet carry it, and Windows SmartScreen then blocks them from
+    /// starting automatically at logon (with no dialog when there is no user to click "Run anyway").
+    /// Returns true when a mark was actually removed. Never throws.
+    /// </summary>
+    private static bool UnblockSelf()
+    {
+        try
+        {
+            var path = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return false;
+
+            var zone = path + ":Zone.Identifier";
+            if (!File.Exists(zone)) return false;
+
+            File.Delete(zone);
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 }
