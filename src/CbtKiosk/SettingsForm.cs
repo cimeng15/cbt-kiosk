@@ -19,7 +19,7 @@ public sealed class SettingsForm : Form
     private NumericUpDown _numTimeout, _numAttempts, _numInterval;
     private TextBox _txtOfflinePwd, _txtOfflinePwd2;
     private TextBox _txtSettingsPwd, _txtSettingsPwd2;
-    private CheckBox _chkBlockNav, _chkAllowReload, _chkAllowZoom, _chkAllowBack;
+    private CheckBox _chkBlockNav, _chkAllowReload, _chkAllowZoom, _chkAllowBack, _chkClearSession;
     private Label _lblOfflineState, _lblSettingsPwdState, _lblSavePath, _lblTest;
     private Button _btnClearOffline, _btnClearSettingsPwd;
 
@@ -34,7 +34,7 @@ public sealed class SettingsForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         ShowInTaskbar = true;
-        ClientSize = new Size(640, 620);
+        ClientSize = new Size(640, 648);
         Font = new Font("Segoe UI", 9.5F);
         BackColor = Color.White;
         AutoScaleMode = AutoScaleMode.Dpi;
@@ -172,7 +172,14 @@ public sealed class SettingsForm : Form
         _chkAllowZoom = new CheckBox { Text = "Izinkan zoom (Ctrl +/-)", Location = new Point(16, y), AutoSize = true };
         Controls.Add(_chkAllowZoom); y += 24;
         _chkAllowBack = new CheckBox { Text = "Izinkan tombol kembali (Backspace)", Location = new Point(16, y), AutoSize = true };
-        Controls.Add(_chkAllowBack); y += 30;
+        Controls.Add(_chkAllowBack); y += 24;
+        _chkClearSession = new CheckBox
+        {
+            Text = "Hapus sesi/cookies saat keluar (siswa harus login lagi)",
+            Location = new Point(16, y),
+            AutoSize = true,
+        };
+        Controls.Add(_chkClearSession); y += 30;
 
         // ---- Footer ------------------------------------------------------------
         _lblSavePath = new Label { Location = new Point(16, y), Size = new Size(600, 34), ForeColor = Color.DimGray };
@@ -205,6 +212,7 @@ public sealed class SettingsForm : Form
         _chkAllowReload.Checked = _settings.AllowReload;
         _chkAllowZoom.Checked = _settings.AllowZoom;
         _chkAllowBack.Checked = _settings.AllowBackNavigation;
+        _chkClearSession.Checked = _settings.ClearSessionOnQuit;
 
         UpdateOfflineState();
         UpdateSettingsPwdState();
@@ -294,6 +302,7 @@ public sealed class SettingsForm : Form
         _settings.AllowReload = _chkAllowReload.Checked;
         _settings.AllowZoom = _chkAllowZoom.Checked;
         _settings.AllowBackNavigation = _chkAllowBack.Checked;
+        _settings.ClearSessionOnQuit = _chkClearSession.Checked;
 
         try
         {

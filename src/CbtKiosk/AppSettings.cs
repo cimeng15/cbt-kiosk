@@ -35,6 +35,12 @@ public sealed class AppSettings
     /// <summary>Optional: if set (SHA-256 hash), the settings window asks for it before saving.</summary>
     public string SettingsPasswordHash { get; set; } = "";
 
+    /// <summary>
+    /// When true, cookies and site data are wiped on quit (and leftovers on start) so that every
+    /// exam session requires a fresh login. Default: true.
+    /// </summary>
+    public bool ClearSessionOnQuit { get; set; } = true;
+
     // ---- Non-persisted helpers -------------------------------------------------
     [JsonIgnore] public string SettingsPath { get; set; } = "";
     [JsonIgnore] public string LoadSource { get; set; } = "";

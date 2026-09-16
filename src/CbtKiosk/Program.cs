@@ -60,6 +60,14 @@ internal static class Program
         {
             try { _mutex.ReleaseMutex(); } catch { /* ignore */ }
             _mutex.Dispose();
+
+            // Final cleanup after the process has released the WebView2 files: make sure no
+            // cookies / session data survive, so the next exam always starts at the login page.
+            if (settings.ClearSessionOnQuit)
+            {
+                MainForm.ClearSessionArtifactsOnDisk();
+                Logger.Info("Session cleanup finished.");
+            }
         }
     }
 }

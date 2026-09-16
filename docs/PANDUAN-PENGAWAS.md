@@ -32,13 +32,21 @@ Panduan singkat untuk pengawas/guru yang mengawasi ujian.
 
 ### Mengeluarkan siswa dari mode ujian
 
-1. Cari ikon **CBT Kiosk** di **system tray** (pojok kanan bawah, mungkin tersembunyi di panah ▲).
-2. Klik kanan → **Keluar dari ujian…**
+1. Klik **tab menu** (☰) yang melayang di **tepi kanan layar**.
+2. Menu akan terbuka ke arah kiri. Klik **"Keluar dari ujian"**.
+   - Untuk memuat ulang halaman ujian, klik **"Muat ulang"**.
 3. Masukkan **password** (password yang dikelola di panel CBT).
 4. Aplikasi menutup dan mengembalikan desktop.
 
+> Alternatif: klik kanan ikon **CBT Kiosk** di **system tray** (pojok kanan bawah, mungkin
+> tersembunyi di panah ▲) → **Keluar dari ujian…**.
+
 > Bila password salah/kedaluwarsa, aplikasi menampilkan alasannya:
 > *"Password salah"*, *"Password sudah kedaluwarsa"*, atau *"Tidak dapat menghubungi server"*.
+
+> **Sesi dihapus saat keluar.** Cookies dan data situs dibersihkan, sehingga saat aplikasi
+> dibuka lagi siswa **harus login ulang**. Ini diatur oleh opsi *"Hapus sesi/cookies saat keluar"*
+> di Pengaturan (aktif secara bawaan).
 
 ---
 
@@ -109,6 +117,8 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v Shell /t
 | Tidak bisa menyimpan Pengaturan | Jalankan sebagai **Administrator**, atau gunakan `CbtKiosk.exe --settings`. |
 | Aplikasi tetap terkunci & pengawas lupa password | Lihat bagian F. |
 | Ikon tray tidak terlihat | Klik panah **▲** di pojok kanan bawah untuk menampilkan ikon tersembunyi. |
+| Tab menu (☰) di tepi kanan tidak terlihat | Pastikan aplikasi berjalan (bukan hanya ikon tray). Tab menempel di tepi kanan tengah layar; pada monitor kedua pindahkan jendela ke monitor utama. |
+| Ingin siswa TIDAK perlu login ulang | Matikan opsi *"Hapus sesi/cookies saat keluar"* di Pengaturan. |
 
 ### Melihat log
 

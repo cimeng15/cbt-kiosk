@@ -9,7 +9,7 @@ public sealed class PasswordPrompt : Form
     private readonly TextBox _input;
     public string EnteredPassword => _input.Text;
 
-    public PasswordPrompt(string title, string message)
+    public PasswordPrompt(string title, string message, IWin32Window owner = null)
     {
         Text = title;
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -71,5 +71,16 @@ public sealed class PasswordPrompt : Form
         ActiveControl = _input;
 
         Shown += (s, e) => { Activate(); _input.Focus(); };
+
+        if (owner != null)
+        {
+            StartPosition = FormStartPosition.Manual;
+            Shown += (s, e) =>
+            {
+                var b = owner is Control c ? c.RectangleToScreen(c.ClientRectangle)
+                                           : Screen.FromHandle(owner.Handle).WorkingArea;
+                Location = new Point(b.Left + (b.Width - Width) / 2, b.Top + (b.Height - Height) / 2);
+            };
+        }
     }
 }

@@ -12,7 +12,9 @@ public sealed class MainForm : Form
     private readonly KioskClient _client;
     private WebView2 _web;
     private NotifyIcon _tray;
+    private SidebarForm _sidebar;
     private bool _quitting;
+    private bool _modalOpen;
 
     // Low-level keyboard hook.
     private Native.LowLevelKeyboardProc _hookProc;
@@ -43,6 +45,8 @@ public sealed class MainForm : Form
         Load += MainForm_Load;
         FormClosing += MainForm_FormClosing;
         KeyDown += MainForm_KeyDown;
+        Resize += (s, e) => _sidebar?.Reposition();
+        Move += (s, e) => _sidebar?.Reposition();
         Deactivate += (s, e) => { if (!_quitting) BeginInvoke(new Action(RegainFocus)); };
     }
 
@@ -66,6 +70,25 @@ public sealed class MainForm : Form
         _tray.ContextMenuStrip.Items.Add("Keluar dari ujian\u2026", null, (s, e) => RequestQuit());
         _tray.ContextMenuStrip.Items.Add(new ToolStripSeparator());
         _tray.ContextMenuStrip.Items.Add("Buka Pengaturan (perlu password)\u2026", null, (s, e) => OpenSettingsFromKiosk());
+
+        // Visible side tab (separate top-level window so it stays above the WebView2 surface).
+        _sidebar = new SidebarForm(
+            boundsProvider: () => Bounds,
+            onRefresh: ReloadExam,
+            onExit: RequestQuit);
+    }
+
+    private void ReloadExam()
+    {
+        try
+        {
+            Logger.Info("Reload requested from the side menu.");
+            _web?.CoreWebView2?.Reload();
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn("Reload failed: " + ex.Message);
+        }
     }
 
     private async void MainForm_Load(object sender, EventArgs e)
@@ -73,6 +96,10 @@ public sealed class MainForm : Form
         Native.ShowWindow(Handle, 3 /* SW_MAXIMIZE */);
         InstallKeyboardHook();
         BlockShellKeys();
+
+        // Show the side tab owned by this window, so it floats above the browser surface.
+        _sidebar.Show(this);
+        _sidebar.Reposition();
 
         try
         {
@@ -94,6 +121,14 @@ public sealed class MainForm : Form
     {
         var userDataFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CbtKiosk", "WebView2");
+
+        // Safety net: remove any session data left behind by a previous run that did not quit
+        // cleanly (power loss / killed process), so a fresh login is always required.
+        if (_settings.ClearSessionOnQuit)
+        {
+            ClearSessionArtifactsOnDisk();
+        }
+
         Directory.CreateDirectory(userDataFolder);
 
         var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
@@ -211,12 +246,25 @@ public sealed class MainForm : Form
 
     private void RequestQuit()
     {
-        using var prompt = new PasswordPrompt("Keluar dari Ujian",
-            "Masukkan password untuk keluar dari mode ujian.\nPassword dikelola oleh pengawas melalui panel CBT.");
-        if (prompt.ShowDialog(this) != DialogResult.OK) return;
+        QuitPasswordResult result;
+        _modalOpen = true;
+        _sidebar?.Hide();
+        try
+        {
+            using var prompt = new PasswordPrompt("Keluar dari Ujian",
+                "Masukkan password untuk keluar dari mode ujian.\nPassword dikelola oleh pengawas melalui panel CBT.",
+                this);
+            if (prompt.ShowDialog(this) != DialogResult.OK) return;
 
-        var entered = prompt.EnteredPassword;
-        var result = Task.Run(() => _client.Validate(entered)).GetAwaiter().GetResult();
+            var entered = prompt.EnteredPassword;
+            result = Task.Run(() => _client.Validate(entered)).GetAwaiter().GetResult();
+        }
+        finally
+        {
+            _modalOpen = false;
+            _sidebar?.Show();
+        }
+
         Logger.Info("Quit attempt result: " + result);
 
         switch (result)
@@ -242,24 +290,34 @@ public sealed class MainForm : Form
 
     private void OpenSettingsFromKiosk()
     {
-        if (!string.IsNullOrWhiteSpace(_settings.SettingsPasswordHash))
+        _modalOpen = true;
+        _sidebar?.Hide();
+        try
         {
-            using var prompt = new PasswordPrompt("Buka Pengaturan", "Masukkan password pengaturan.");
-            if (prompt.ShowDialog(this) != DialogResult.OK) return;
-            if (!Hash.FixedTimeEquals(Hash.Sha256Hex(prompt.EnteredPassword),
-                    _settings.SettingsPasswordHash.ToLowerInvariant()))
+            if (!string.IsNullOrWhiteSpace(_settings.SettingsPasswordHash))
             {
-                ShowError("Password pengaturan salah.");
-                return;
+                using var prompt = new PasswordPrompt("Buka Pengaturan", "Masukkan password pengaturan.", this);
+                if (prompt.ShowDialog(this) != DialogResult.OK) return;
+                if (!Hash.FixedTimeEquals(Hash.Sha256Hex(prompt.EnteredPassword),
+                        _settings.SettingsPasswordHash.ToLowerInvariant()))
+                {
+                    ShowError("Password pengaturan salah.");
+                    return;
+                }
+            }
+
+            using var form = new SettingsForm(_settings, standalone: false);
+            form.ShowDialog(this);
+            // Apply the (possibly) changed navigation-related settings.
+            if (_web?.CoreWebView2 != null)
+            {
+                _web.CoreWebView2.Settings.IsZoomControlEnabled = _settings.AllowZoom;
             }
         }
-
-        using var form = new SettingsForm(_settings, standalone: false);
-        form.ShowDialog(this);
-        // Apply the (possibly) changed navigation-related settings.
-        if (_web?.CoreWebView2 != null)
+        finally
         {
-            _web.CoreWebView2.Settings.IsZoomControlEnabled = _settings.AllowZoom;
+            _modalOpen = false;
+            _sidebar?.Show();
         }
     }
 
@@ -274,6 +332,9 @@ public sealed class MainForm : Form
     /// <summary>Pulls the window back to the front (used when the user tries to switch away).</summary>
     private void RegainFocus()
     {
+        // Never steal focus from a modal dialog (password / settings) or while quitting.
+        if (_modalOpen || _quitting) return;
+
         try
         {
             Native.ShowWindow(Handle, 3 /* SW_MAXIMIZE */);
@@ -288,11 +349,67 @@ public sealed class MainForm : Form
     {
         _quitting = true;
         Logger.Info("Quitting the kiosk.");
+
+        // Wipe the browsing session so the student must log in again next time.
+        if (_settings.ClearSessionOnQuit)
+        {
+            ClearSession();
+        }
+
         RemoveKeyboardHook();
         UnblockShellKeys();
         _tray.Visible = false;
         _tray.Dispose();
         Close();
+    }
+
+    /// <summary>Deletes all cookies of the running WebView2 session (best effort, UI thread).</summary>
+    private void ClearSession()
+    {
+        try
+        {
+            var cookies = _web?.CoreWebView2?.CookieManager;
+            if (cookies != null)
+            {
+                cookies.DeleteAllCookies();
+                Logger.Info("Cookies deleted - next launch will require a fresh login.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn("Could not delete cookies: " + ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Removes the on-disk WebView2 profile (cookies, cache, storage). Called before the browser
+    /// starts and again after the app exits, when the files are no longer locked.
+    /// </summary>
+    public static void ClearSessionArtifactsOnDisk()
+    {
+        var root = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CbtKiosk", "WebView2");
+
+        for (var attempt = 1; attempt <= 5; attempt++)
+        {
+            try
+            {
+                if (!Directory.Exists(root))
+                {
+                    Logger.Info("Session data already clean.");
+                    return;
+                }
+
+                Directory.Delete(root, recursive: true);
+                Logger.Info("Session data folder removed: " + root);
+                return;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"Attempt {attempt}/5 to remove session data failed: {ex.Message}");
+                Thread.Sleep(250 * attempt);
+            }
+        }
     }
 
     // ---------------------------------------------------------------- shell key suppression
