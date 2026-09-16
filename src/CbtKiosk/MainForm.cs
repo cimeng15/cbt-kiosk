@@ -8,11 +8,16 @@ namespace CbtKiosk;
 
 public sealed class MainForm : Form
 {
+    // Keyboard shortcuts (active at all times, handled by the low-level hook so they work
+    // even while the WebView2 page has focus):
+    //   F5            -> reload the exam page
+    //   Ctrl + Alt+ Q -> quit (asks for the quit password)
+    private const Keys QuitKey = Keys.Q;
+
     private readonly AppSettings _settings;
     private readonly KioskClient _client;
     private WebView2 _web;
     private NotifyIcon _tray;
-    private SidebarForm _sidebar;
     private bool _quitting;
     private bool _modalOpen;
 
@@ -45,8 +50,6 @@ public sealed class MainForm : Form
         Load += MainForm_Load;
         FormClosing += MainForm_FormClosing;
         KeyDown += MainForm_KeyDown;
-        Resize += (s, e) => _sidebar?.Reposition();
-        Move += (s, e) => _sidebar?.Reposition();
         Deactivate += (s, e) => { if (!_quitting) BeginInvoke(new Action(RegainFocus)); };
     }
 
@@ -62,27 +65,22 @@ public sealed class MainForm : Form
         _tray = new NotifyIcon
         {
             Icon = SystemIcons.Shield,
-            Text = "CBT Kiosk - Mode Ujian",
+            Text = "CBT Kiosk - Mode Ujian\nF5 = muat ulang, Ctrl+Alt+Q = keluar",
             Visible = true,
             ContextMenuStrip = new ContextMenuStrip(),
         };
         _tray.DoubleClick += (s, e) => BringToFront();
-        _tray.ContextMenuStrip.Items.Add("Keluar dari ujian\u2026", null, (s, e) => RequestQuit());
+        _tray.ContextMenuStrip.Items.Add("Keluar dari ujian  (Ctrl+Alt+Q)\u2026", null, (s, e) => RequestQuit());
+        _tray.ContextMenuStrip.Items.Add("Muat ulang  (F5)", null, (s, e) => ReloadExam());
         _tray.ContextMenuStrip.Items.Add(new ToolStripSeparator());
         _tray.ContextMenuStrip.Items.Add("Buka Pengaturan (perlu password)\u2026", null, (s, e) => OpenSettingsFromKiosk());
-
-        // Visible side tab (separate top-level window so it stays above the WebView2 surface).
-        _sidebar = new SidebarForm(
-            boundsProvider: () => Bounds,
-            onRefresh: ReloadExam,
-            onExit: RequestQuit);
     }
 
     private void ReloadExam()
     {
         try
         {
-            Logger.Info("Reload requested from the side menu.");
+            Logger.Info("Reload (F5) requested.");
             _web?.CoreWebView2?.Reload();
         }
         catch (Exception ex)
@@ -96,10 +94,6 @@ public sealed class MainForm : Form
         Native.ShowWindow(Handle, 3 /* SW_MAXIMIZE */);
         InstallKeyboardHook();
         BlockShellKeys();
-
-        // Show the side tab owned by this window, so it floats above the browser surface.
-        _sidebar.Show(this);
-        _sidebar.Reposition();
 
         try
         {
@@ -248,7 +242,6 @@ public sealed class MainForm : Form
     {
         QuitPasswordResult result;
         _modalOpen = true;
-        _sidebar?.Hide();
         try
         {
             using var prompt = new PasswordPrompt("Keluar dari Ujian",
@@ -262,7 +255,6 @@ public sealed class MainForm : Form
         finally
         {
             _modalOpen = false;
-            _sidebar?.Show();
         }
 
         Logger.Info("Quit attempt result: " + result);
@@ -291,7 +283,6 @@ public sealed class MainForm : Form
     private void OpenSettingsFromKiosk()
     {
         _modalOpen = true;
-        _sidebar?.Hide();
         try
         {
             if (!string.IsNullOrWhiteSpace(_settings.SettingsPasswordHash))
@@ -317,7 +308,6 @@ public sealed class MainForm : Form
         finally
         {
             _modalOpen = false;
-            _sidebar?.Show();
         }
     }
 
@@ -424,7 +414,7 @@ public sealed class MainForm : Form
         if (_hookHandle == IntPtr.Zero)
             Logger.Warn("Failed to install the low-level keyboard hook (Win32 error " + Marshal.GetLastWin32Error() + ").");
         else
-            Logger.Info("Keyboard hook installed.");
+            Logger.Info("Keyboard hook installed. Shortcuts: F5 = reload, Ctrl+Alt+Q = quit.");
     }
 
     private void RemoveKeyboardHook()
@@ -449,6 +439,25 @@ public sealed class MainForm : Form
             if (vk == Keys.LMenu || vk == Keys.RMenu) { _altDown = isDown; }
             if (vk == Keys.LControlKey || vk == Keys.RControlKey) { _ctrlDown = isDown; }
             if (vk == Keys.LShiftKey || vk == Keys.RShiftKey) { _shiftDown = isDown; }
+
+            // ---- Global shortcuts (work even while the page has focus) ----------
+            // They are handled here, before any blocking, so they always work.
+            if (isDown && !_modalOpen)
+            {
+                // F5 -> reload the exam page.
+                if (vk == Keys.F5)
+                {
+                    BeginInvoke(new Action(ReloadExam));
+                    return (IntPtr)1;
+                }
+
+                // Ctrl + Alt + Q -> quit (asks for the password).
+                if (_ctrlDown && _altDown && vk == QuitKey)
+                {
+                    BeginInvoke(new Action(RequestQuit));
+                    return (IntPtr)1;
+                }
+            }
 
             if (_settings.BlockNavigationKeys)
             {
@@ -492,8 +501,6 @@ public sealed class MainForm : Form
                 case Keys.J:            // downloads
                 case Keys.H:            // history
                     return true;
-                case Keys.R:            // reload
-                    return !_settings.AllowReload;
                 case Keys.Add:
                 case Keys.Subtract:
                 case Keys.Oemplus:
@@ -504,7 +511,6 @@ public sealed class MainForm : Form
         }
 
         if (vk == Keys.F12) return true;
-        if (vk == Keys.F5) return !_settings.AllowReload;
         if (vk == Keys.BrowserBack) return !_settings.AllowBackNavigation;
         if (vk == Keys.Apps) return true; // context-menu key
 

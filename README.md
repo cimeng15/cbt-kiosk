@@ -16,7 +16,7 @@ diambil dari server CBT** — dengan **password cadangan offline** bila internet
 |---|---|
 | **Buka URL ujian** | URL `https://cbt.smkdata.sch.id` sudah tertanam; bisa diubah di Pengaturan. |
 | **Mode kios penuh layar** | Tanpa bingkai, selalu di atas, maksimal, auto-fokus. |
-| **Tombol menu samping** | Tab melayang di tepi kanan layar (☰). Diklik dulu → muncul menu **Muat ulang** & **Keluar dari ujian**. Selalu terlihat di atas halaman ujian. |
+| **Pintasan keyboard** | **F5** = muat ulang halaman ujian, **Ctrl+Alt+Q** = keluar (minta password). Selalu aktif — bekerja walaupun halaman ujian sedang difokus. |
 | **Lockdown** | Blokir Alt+Tab, Win, Alt+F4, Alt+Esc, Ctrl+Esc, Ctrl+Shift+Esc, F12, Ctrl+P/S/O/N/T/W/U/J/H, klik-kanan, DevTools, unduhan, popup, izin kamera/mikrofon/notifikasi, keluar paksa. |
 | **Batasi navigasi** | Hanya boleh membuka domain CBT (dan domain fallback yang dikonfigurasi). |
 | **Password keluar dari API CBT** | Diambil dari `https://cbt.smkdata.sch.id/api/kiosk/settings`. |
@@ -102,11 +102,16 @@ C:\Users\<user>\AppData\Roaming\CbtKiosk\settings.json   (hanya pengguna ini —
 ### 3.3 Menjalankan ujian
 
 - Siswa cukup **klik dua kali** `CbtKiosk.exe`. Aplikasi membuka URL ujian dalam mode kios.
-- **Keluar dari ujian:** klik **tab menu** (☰) di **tepi kanan layar** → menu terbuka →
-  klik **"Keluar dari ujian"**, lalu masukkan password.
-  - Menu yang sama juga punya tombol **"Muat ulang"** untuk memuat ulang halaman ujian.
-  - Alternatif: klik kanan ikon aplikasi di **system tray** (pojok kanan bawah) → *Keluar dari ujian…*.
-  - Menu **Buka Pengaturan** ada di tray (dilindungi password pengaturan, bila diatur).
+- **Pintasan keyboard** (selalu aktif, dari dalam aplikasi):
+
+  | Tombol | Fungsi |
+  |---|---|
+  | **F5** | Muat ulang halaman ujian |
+  | **Ctrl + Alt + Q** | Keluar dari ujian (muncul dialog password) |
+
+- **Keluar dari ujian:** tekan **Ctrl+Alt+Q** → masukkan password dari panel CBT.
+  - Alternatif: klik kanan ikon aplikasi di **system tray** (pojok kanan bawah) →
+    *Keluar dari ujian…*. Menu **Buka Pengaturan** juga ada di tray (dilindungi password pengaturan, bila diatur).
 - Setelah keluar, **sesi/cookies dihapus**, jadi saat aplikasi dibuka lagi siswa **harus login ulang**.
 
 ### 3.4 Menjadikan aplikasi sebagai shell (kios paling kuat, opsional)
@@ -156,8 +161,7 @@ Hasil: `publish/win-x64/CbtKiosk.exe` (± 70–90 MB, satu berkas, portabel).
 cbt-kiosk/
 ├─ src/CbtKiosk/
 │  ├─ Program.cs          # titik masuk, deteksi --settings, single-instance, bersih-bersih sesi
-│  ├─ MainForm.cs         # jendela kios, WebView2, lockdown, alur keluar, hapus sesi
-│  ├─ SidebarForm.cs      # tab menu melayang (Muat ulang / Keluar)
+│  ├─ MainForm.cs         # jendela kios, WebView2, lockdown, pintasan keyboard, hapus sesi
 │  ├─ SettingsForm.cs     # jendela pengaturan (URL, password, lockdown)
 │  ├─ PasswordPrompt.cs   # dialog password
 │  ├─ KioskClient.cs      # HTTP ke endpoint CBT + validasi password + fallback

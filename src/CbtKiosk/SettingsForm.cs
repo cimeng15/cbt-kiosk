@@ -19,7 +19,7 @@ public sealed class SettingsForm : Form
     private NumericUpDown _numTimeout, _numAttempts, _numInterval;
     private TextBox _txtOfflinePwd, _txtOfflinePwd2;
     private TextBox _txtSettingsPwd, _txtSettingsPwd2;
-    private CheckBox _chkBlockNav, _chkAllowReload, _chkAllowZoom, _chkAllowBack, _chkClearSession;
+    private CheckBox _chkBlockNav, _chkAllowZoom, _chkAllowBack, _chkClearSession;
     private Label _lblOfflineState, _lblSettingsPwdState, _lblSavePath, _lblTest;
     private Button _btnClearOffline, _btnClearSettingsPwd;
 
@@ -164,11 +164,14 @@ public sealed class SettingsForm : Form
         Controls.Add(_txtSettingsPwd2); y += 34;
 
         // ---- Lockdown options --------------------------------------------------
-        Controls.Add(Header("Kunci penguncian (lockdown)", y)); y += 26;
+        Controls.Add(Header("Kunci penguncian (lockdown)", y)); y += 24;
+        Controls.Add(new Label
+        {
+            Text = "Pintasan: F5 = muat ulang, Ctrl+Alt+Q = keluar (keduanya selalu aktif).",
+            Location = new Point(16, y), Size = new Size(600, 18), ForeColor = Color.DimGray,
+        }); y += 26;
         _chkBlockNav = new CheckBox { Text = "Blokir tombol Windows / Alt+Tab / Alt+F4 / Esc", Location = new Point(16, y), AutoSize = true };
         Controls.Add(_chkBlockNav); y += 24;
-        _chkAllowReload = new CheckBox { Text = "Izinkan muat ulang (F5 / Ctrl+R)", Location = new Point(16, y), AutoSize = true };
-        Controls.Add(_chkAllowReload); y += 24;
         _chkAllowZoom = new CheckBox { Text = "Izinkan zoom (Ctrl +/-)", Location = new Point(16, y), AutoSize = true };
         Controls.Add(_chkAllowZoom); y += 24;
         _chkAllowBack = new CheckBox { Text = "Izinkan tombol kembali (Backspace)", Location = new Point(16, y), AutoSize = true };
@@ -209,7 +212,6 @@ public sealed class SettingsForm : Form
         _numAttempts.Value = Math.Clamp(_settings.KioskAttempts, 1, 20);
         _numInterval.Value = Math.Clamp(_settings.KioskAttemptIntervalMs, 0, 30000);
         _chkBlockNav.Checked = _settings.BlockNavigationKeys;
-        _chkAllowReload.Checked = _settings.AllowReload;
         _chkAllowZoom.Checked = _settings.AllowZoom;
         _chkAllowBack.Checked = _settings.AllowBackNavigation;
         _chkClearSession.Checked = _settings.ClearSessionOnQuit;
@@ -299,7 +301,6 @@ public sealed class SettingsForm : Form
         _settings.KioskAttempts = (int)_numAttempts.Value;
         _settings.KioskAttemptIntervalMs = (int)_numInterval.Value;
         _settings.BlockNavigationKeys = _chkBlockNav.Checked;
-        _settings.AllowReload = _chkAllowReload.Checked;
         _settings.AllowZoom = _chkAllowZoom.Checked;
         _settings.AllowBackNavigation = _chkAllowBack.Checked;
         _settings.ClearSessionOnQuit = _chkClearSession.Checked;

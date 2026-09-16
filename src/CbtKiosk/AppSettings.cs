@@ -28,7 +28,6 @@ public sealed class AppSettings
 
     // ---- Lockdown behaviour ----------------------------------------------------
     public bool BlockNavigationKeys { get; set; } = true;
-    public bool AllowReload { get; set; } = false;
     public bool AllowZoom { get; set; } = false;
     public bool AllowBackNavigation { get; set; } = false;
 
