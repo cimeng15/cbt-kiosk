@@ -1,0 +1,15 @@
+# Build output
+bin/
+obj/
+publish/
+dist/
+*.zip
+
+# User settings / logs (never commit)
+settings.json
+*.log
+
+# IDE
+.vs/
+.idea/
+*.user

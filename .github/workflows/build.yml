@@ -1,0 +1,80 @@
+name: Build CBT Kiosk (Windows)
+
+on:
+  push:
+    branches: [ master, main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+env:
+  PROJECT: src/CbtKiosk/CbtKiosk.csproj
+  DOTNET_VERSION: '8.0.x'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & publish (win-x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish self-contained single-file EXE
+        run: >
+          dotnet publish ${{ env.PROJECT }}
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -o publish/win-x64
+
+      - name: Assemble release folder
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item publish/win-x64/CbtKiosk.exe dist/
+          Copy-Item README.md dist/README.md
+          Copy-Item docs/PANDUAN-PENGAWAS.md dist/PANDUAN-PENGAWAS.md
+          Get-ChildItem dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CbtKiosk-win-x64
+          path: dist/
+
+      - name: Zip release folder
+        shell: pwsh
+        run: Compress-Archive -Path dist/* -DestinationPath CbtKiosk-win-x64.zip -Force
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}-build{1}', github.run_number, github.run_attempt) }}
+          name: CBT Kiosk ${{ github.ref_name }}
+          body: |
+            Aplikasi Windows untuk ujian CBT (mode kios) — siswa fokus pada ujian.
+
+            **Berkas:** `CbtKiosk.exe` (portabel, self-contained, tanpa instalasi).
+
+            Cara pakai singkat:
+            1. Jalankan `CbtKiosk.exe --settings` **sebagai Administrator** untuk mengatur URL & password cadangan offline.
+            2. Jalankan `CbtKiosk.exe` (dua klik) untuk memulai mode ujian.
+
+            Lihat `PANDUAN-PENGAWAS.md` untuk panduan lengkap.
+          files: |
+            CbtKiosk-win-x64.zip
+            dist/CbtKiosk.exe
+          draft: false
+          prerelease: false
