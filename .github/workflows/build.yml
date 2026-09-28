@@ -78,33 +78,35 @@ jobs:
           Get-ChildItem dist
 
       # ------------------------------------------------------------ signature
-      # Releases are cut for tags (vX.Y.Z) and for manual runs. A push to master/main
-      # also produces a release, tagged v<version>-build<N>, so the compiled EXEs are
-      # always downloadable without creating a tag by hand.
+      # Releases are cut for tags (vX.Y.Z), for pushes to master/main, and for manual
+      # runs. The auto-generated tag is derived from the COMMIT (v<version>-<short sha>),
+      # never from the run number: GitHub occasionally fires two runs for one push, and a
+      # commit-based tag makes those collapse into a single release instead of duplicates.
       - name: Determine release version, tag and names
         id: meta
         shell: pwsh
         run: |
           $csproj = [xml](Get-Content '${{ env.SETUP_PROJECT }}')
           $version = ($csproj.Project.PropertyGroup.Version | Where-Object { $_ }).Trim()
+          $sha = '${{ github.sha }}'.Substring(0, 7)
 
           if ('${{ github.ref }}' -like 'refs/tags/v*') {
             $tag = '${{ github.ref_name }}'
             $name = "CBT Kiosk $tag"
             $prerelease = 'false'
           } elseif ('${{ github.event_name }}' -eq 'pull_request') {
-            $tag = "v$version-build${{ github.run_number }}"
+            $tag = "v$version-pr${{ github.event.pull_request.number }}-$sha"
             $name = "CBT Kiosk v$version (uji PR #${{ github.event.pull_request.number }})"
             $prerelease = 'true'
           } else {
-            $tag = "v$version-build${{ github.run_number }}"
-            $name = "CBT Kiosk v$version (build ${{ github.run_number }})"
+            $tag = "v$version-$sha"
+            $name = "CBT Kiosk v$version ($sha)"
             $prerelease = 'false'
           }
 
-          "version=$version"     >> $env:GITHUB_OUTPUT
-          "tag=$tag"             >> $env:GITHUB_OUTPUT
-          "name=$name"           >> $env:GITHUB_OUTPUT
+          "version=$version"       >> $env:GITHUB_OUTPUT
+          "tag=$tag"               >> $env:GITHUB_OUTPUT
+          "name=$name"             >> $env:GITHUB_OUTPUT
           "prerelease=$prerelease" >> $env:GITHUB_OUTPUT
           Write-Host "version=$version tag=$tag name=$name prerelease=$prerelease"
 

@@ -206,9 +206,11 @@ Workflow `.github/workflows/build.yml` membangun kedua aplikasi pada setiap push
 `master`/`main`, pada tag `v*`, dan pada *Run workflow* manual. Setelah build sukses, hasilnya
 otomatis **dipublikasikan sebagai Release**:
 
-- Push/tag: tag `v<versi>` (untuk tag) atau `v<versi>-build<N>` (untuk push biasa).
+- Push: tag `v<versi>-<7 digit commit>`; tag `v<versi>` bila didorong dengan tag `v*`.
 - Aset rilis: `CbtKiosk.exe`, `CbtKioskSetup.exe`, dan `CbtKiosk-win-x64-<versi>.zip`.
 - Nomor versi diambil dari `<Version>` di `src/CbtKioskSetup/CbtKioskSetup.csproj`.
+- Tag berbasis commit (bukan nomor build) membuat rilis tetap satu bila GitHub menjalankan dua
+  kali untuk satu push.
 
 Untuk membuat rilis bernomor versi resmi (mis. `v1.6.0`): ubah `<Version>` lalu
 `git tag v1.6.0 && git push origin v1.6.0`.
