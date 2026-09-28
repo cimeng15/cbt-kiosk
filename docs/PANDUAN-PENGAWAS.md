@@ -12,12 +12,14 @@ Panduan singkat untuk pengawas/guru yang mengawasi ujian.
      pasang WebView2 Runtime dari <https://go.microsoft.com/fwlink/p/?LinkId=2124703>.
 
 2. **Atur aplikasi (sekali saja, sebagai Administrator).**
-   - Klik kanan `CbtKiosk.exe` → *Run as administrator*, dengan argumen `--settings`.
-   - Periksa **URL ujian** dan **Endpoint password** sudah benar.
+   - Klik kanan **`CbtKioskSetup.exe`** → *Run as administrator* (aplikasi pengaturan, tidak perlu
+     console).
+   - Tab **Umum & Koneksi**: periksa **URL ujian** dan **Endpoint password** sudah benar.
    - Klik **Tes koneksi** → harus muncul "OK — endpoint terjangkau".
-   - Isi **Password cadangan offline** (lihat bagian C) bila perlu.
-   - Isi **Password pengaturan** bila ingin siswa tidak bisa membuka Pengaturan.
-   - **Simpan**.
+   - Tab **Keamanan & Penguncian**: isi **Password cadangan offline** (lihat bagian C) bila perlu,
+     dan **Password pengaturan** bila ingin siswa tidak bisa membuka Pengaturan.
+   - Tab **Startup & Aplikasi**: tentukan lokasi `CbtKiosk.exe`, atur auto-start bila perlu.
+   - Klik **Simpan**.
 
 3. **Uji coba** di satu komputer: jalankan `CbtKiosk.exe`, pastikan halaman ujian terbuka penuh
    layar, lalu coba keluar dengan password dari panel CBT.
@@ -58,14 +60,16 @@ bila **tidak ada endpoint yang terjangkau**.
 
 ### Mengatur password cadangan offline
 
-1. Buka **Pengaturan** (sebagai Administrator, `CbtKiosk.exe --settings`).
-2. Di bagian **"Password cadangan offline"**, ketik password darurat, ulangi, lalu **Simpan**.
+1. Buka **aplikasi pengaturan**: klik kanan `CbtKioskSetup.exe` → *Run as administrator*.
+   (Alternatif lama: `CbtKiosk.exe --settings`.)
+2. Di tab **Keamanan & Penguncian** → bagian **"Password cadangan offline"**, ketik password
+   darurat, ulangi, lalu **Simpan**.
    - Password disimpan sebagai **hash SHA-256** (tidak dalam bentuk teks biasa).
 3. Beri tahu password ini **hanya kepada pengawas** yang berwenang.
 
 ### Menghapus password cadangan
 
-Buka Pengaturan → bagian *Password cadangan offline* → tombol **Hapus** → Simpan.
+Buka Pengaturan → tab *Keamanan & Penguncian* → tombol **Hapus** → Simpan.
 
 > **Keamanan:** jaga kerahasiaan password cadangan. Siapa pun yang tahu password ini bisa keluar
 > dari mode ujian meski server mati.
@@ -114,7 +118,7 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v Shell /t
 | "Password salah" padahal benar | Pastikan password di panel CBT sudah diperbarui dan belum kedaluwarsa; perhatikan **huruf besar/kecil**. |
 | "Password sudah kedaluwarsa" | Perbarui password di panel CBT (menu pengaturan kios). |
 | "Tidak dapat menghubungi server CBT…" | Internet/server mati dan **password cadangan offline belum diatur**. Atur lewat Pengaturan (bagian C). |
-| Tidak bisa menyimpan Pengaturan | Jalankan sebagai **Administrator**, atau gunakan `CbtKiosk.exe --settings`. |
+| Tidak bisa menyimpan Pengaturan | Jalankan **`CbtKioskSetup.exe`** sebagai **Administrator** (atau gunakan tombol "Jalankan sebagai Administrator" di banner kuning), supaya pengaturan bersama `%ProgramData%` dapat ditulis. |
 | Aplikasi tidak ikut menyala saat Windows login | Lihat bagian **G. Startup tidak jalan** di bawah. |
 | Aplikasi tetap terkunci & pengawas lupa password | Lihat bagian F. |
 | Ikon tray tidak terlihat | Klik panah **▲** di pojok kanan bawah untuk menampilkan ikon tersembunyi. |
@@ -155,7 +159,8 @@ Windows login. Penyebab tersering, berurutan:
 
 ### Langkah diagnosa cepat
 
-1. Buka **Pengaturan** (`CbtKiosk.exe --settings`) → bagian *Saat Windows menyala (startup)*.
+1. Buka **aplikasi pengaturan** (`CbtKioskSetup.exe`, sebagai Administrator) → tab
+   *Startup & Aplikasi* → bagian *Saat Windows menyala (auto-start)*.
 2. Klik tombol **"Periksa startup"**. Akan muncul laporan: path aplikasi, isi registry Run,
    apakah file di path itu benar-benar ada, dan status scheduled task.
 3. Ikuti hasilnya:
@@ -165,7 +170,8 @@ Windows login. Penyebab tersering, berurutan:
 
 ### Ganti ke metode Scheduled Task (lebih andal)
 
-Di **Pengaturan** → *Metode startup* → pilih **"Scheduled Task (lebih andal)"** → **Simpan**.
+Di **Pengaturan** → tab *Startup & Aplikasi* → *Metode startup* → pilih
+**"Scheduled Task (lebih andal)"** → **Simpan**.
 Aplikasi akan membuat task Windows bernama `CbtKiosk` dengan pemicu **"At logon"**. Cek hasilnya
 di **Task Scheduler** (`taskschd.msc`) → *Task Scheduler Library* → `CbtKiosk`.
 

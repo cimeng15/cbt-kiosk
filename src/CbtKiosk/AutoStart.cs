@@ -41,7 +41,18 @@ public static class AutoStart
         }
     }
 
-    private static string Command => $"\"{CurrentExePath}\"";
+    /// <summary>
+    /// When set, auto-start is registered for THIS executable instead of the current process.
+    /// The standalone settings app (CbtKioskSetup.exe) uses it so that enabling auto-start writes
+    /// the path of the kiosk executable it manages, not its own path.
+    /// </summary>
+    public static string TargetExePath { get; set; }
+
+    /// <summary>The executable that auto-start registrations should point at.</summary>
+    public static string EffectiveExePath =>
+        string.IsNullOrWhiteSpace(TargetExePath) ? CurrentExePath : TargetExePath;
+
+    private static string Command => $"\"{EffectiveExePath}\"";
 
     // ------------------------------------------------------------------ registry
 
@@ -145,8 +156,8 @@ public static class AutoStart
         var lines = new List<string>
         {
             "Path aplikasi sekarang:",
-            "  " + CurrentExePath,
-            "  file ada: " + (File.Exists(CurrentExePath) ? "YA" : "TIDAK"),
+            "  " + EffectiveExePath,
+            "  file ada: " + (File.Exists(EffectiveExePath) ? "YA" : "TIDAK"),
             "",
         };
 

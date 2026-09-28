@@ -9,7 +9,9 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT: src/CbtKiosk/CbtKiosk.csproj
+  KIOSK_PROJECT: src/CbtKiosk/CbtKiosk.csproj
+  SETUP_PROJECT: src/CbtKioskSetup/CbtKioskSetup.csproj
+  TEST_PROJECT: tests/LogicTest/LogicTest.csproj
   DOTNET_VERSION: '8.0.x'
 
 permissions:
@@ -29,52 +31,132 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Publish self-contained single-file EXE
+      # ---------------------------------------------------------------- kiosk
+      - name: Publish kiosk (self-contained single-file EXE)
         run: >
-          dotnet publish ${{ env.PROJECT }}
+          dotnet publish ${{ env.KIOSK_PROJECT }}
           -c Release -r win-x64 --self-contained true
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:EnableCompressionInSingleFile=true
           -o publish/win-x64
 
+      # --------------------------------------------------------- settings app
+      - name: Publish settings app (self-contained single-file EXE)
+        run: >
+          dotnet publish ${{ env.SETUP_PROJECT }}
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -o publish/win-x64
+
+      # ------------------------------------------------------------ self-check
+      - name: Run logic tests
+        # The tests call the live CBT endpoint, so a network hiccup must not fail the release.
+        continue-on-error: true
+        run: dotnet run --project ${{ env.TEST_PROJECT }} -c Release
+
+      - name: Verify the executables exist
+        shell: pwsh
+        run: |
+          $required = @('publish/win-x64/CbtKiosk.exe', 'publish/win-x64/CbtKioskSetup.exe')
+          foreach ($file in $required) {
+            if (-not (Test-Path $file)) { throw "Berkas hasil build tidak ditemukan: $file" }
+            $size = [math]::Round((Get-Item $file).Length / 1MB, 1)
+            Write-Host "$file -> $size MB"
+          }
+
       - name: Assemble release folder
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item publish/win-x64/CbtKiosk.exe dist/
+          Copy-Item publish/win-x64/CbtKioskSetup.exe dist/
           Copy-Item README.md dist/README.md
           Copy-Item docs/PANDUAN-PENGAWAS.md dist/PANDUAN-PENGAWAS.md
           Get-ChildItem dist
 
+      # ------------------------------------------------------------ signature
+      # Releases are cut for tags (vX.Y.Z) and for manual runs. A push to master/main
+      # also produces a release, tagged v<version>-build<N>, so the compiled EXEs are
+      # always downloadable without creating a tag by hand.
+      - name: Determine release version, tag and names
+        id: meta
+        shell: pwsh
+        run: |
+          $csproj = [xml](Get-Content '${{ env.SETUP_PROJECT }}')
+          $version = ($csproj.Project.PropertyGroup.Version | Where-Object { $_ }).Trim()
+
+          if ('${{ github.ref }}' -like 'refs/tags/v*') {
+            $tag = '${{ github.ref_name }}'
+            $name = "CBT Kiosk $tag"
+            $prerelease = 'false'
+          } elseif ('${{ github.event_name }}' -eq 'pull_request') {
+            $tag = "v$version-build${{ github.run_number }}"
+            $name = "CBT Kiosk v$version (uji PR #${{ github.event.pull_request.number }})"
+            $prerelease = 'true'
+          } else {
+            $tag = "v$version-build${{ github.run_number }}"
+            $name = "CBT Kiosk v$version (build ${{ github.run_number }})"
+            $prerelease = 'false'
+          }
+
+          "version=$version"     >> $env:GITHUB_OUTPUT
+          "tag=$tag"             >> $env:GITHUB_OUTPUT
+          "name=$name"           >> $env:GITHUB_OUTPUT
+          "prerelease=$prerelease" >> $env:GITHUB_OUTPUT
+          Write-Host "version=$version tag=$tag name=$name prerelease=$prerelease"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CbtKiosk-win-x64
+          name: CbtKiosk-win-x64-v${{ steps.meta.outputs.version }}
           path: dist/
 
       - name: Zip release folder
         shell: pwsh
-        run: Compress-Archive -Path dist/* -DestinationPath CbtKiosk-win-x64.zip -Force
+        run: Compress-Archive -Path dist/* -DestinationPath CbtKiosk-win-x64-${{ steps.meta.outputs.version }}.zip -Force
+
+      - name: Generate release notes
+        shell: pwsh
+        run: |
+          @"
+          Aplikasi Windows untuk ujian CBT (mode kios) — siswa fokus pada ujian.
+
+          **Berkas yang tersedia**
+          | Berkas | Fungsi |
+          |---|---|
+          | ``CbtKiosk.exe`` | Aplikasi ujian (mode kios). Dijalankan siswa. |
+          | ``CbtKioskSetup.exe`` | **Aplikasi pengaturan baru** — atur URL, password, dan auto-start tanpa console. |
+          | ``CbtKiosk-win-x64-*.zip`` | Kedua berkas di atas + README + panduan pengawas. |
+
+          **Cara pakai singkat**
+          1. Salin kedua ``.exe`` ke folder yang sama, mis. ``C:\CbtKiosk\``.
+          2. Klik kanan ``CbtKioskSetup.exe`` → **Run as administrator**, lalu isi URL ujian & password. Klik **Tes koneksi**, lalu **Simpan**.
+          3. Klik **Jalankan CBT Kiosk** (atau dua klik ``CbtKiosk.exe``) untuk memulai mode ujian.
+
+          **Baru di versi ini**
+          - Aplikasi pengaturan grafis (``CbtKioskSetup.exe``) menggantikan ``CbtKiosk.exe --settings`` dari console.
+          - Tab Umum / Keamanan / Startup / Bantuan, tombol **Tes koneksi**, **Periksa startup**, **Jalankan CBT Kiosk**, dan pendeteksi lokasi ``CbtKiosk.exe``.
+          - Auto-start dari aplikasi pengaturan menunjuk ke ``CbtKiosk.exe`` (bukan ke aplikasi pengaturan).
+
+          ``CbtKiosk.exe --settings`` tetap bisa dipakai bila diperlukan.
+
+          Lihat ``PANDUAN-PENGAWAS.md`` untuk panduan lengkap.
+          "@ | Set-Content -Path release-notes.md -Encoding utf8
+          Get-Content release-notes.md
 
       - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}-build{1}', github.run_number, github.run_attempt) }}
-          name: CBT Kiosk ${{ github.ref_name }}
-          body: |
-            Aplikasi Windows untuk ujian CBT (mode kios) — siswa fokus pada ujian.
-
-            **Berkas:** `CbtKiosk.exe` (portabel, self-contained, tanpa instalasi).
-
-            Cara pakai singkat:
-            1. Jalankan `CbtKiosk.exe --settings` **sebagai Administrator** untuk mengatur URL & password cadangan offline.
-            2. Jalankan `CbtKiosk.exe` (dua klik) untuk memulai mode ujian.
-
-            Lihat `PANDUAN-PENGAWAS.md` untuk panduan lengkap.
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.name }}
+          body_path: release-notes.md
           files: |
-            CbtKiosk-win-x64.zip
+            CbtKiosk-win-x64-${{ steps.meta.outputs.version }}.zip
             dist/CbtKiosk.exe
+            dist/CbtKioskSetup.exe
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.meta.outputs.prerelease == 'true' }}

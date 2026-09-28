@@ -10,10 +10,10 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    <AssemblyName>CbtKiosk</AssemblyName>
-    <RootNamespace>CbtKiosk</RootNamespace>
-    <Product>CBT Kiosk</Product>
-    <AssemblyTitle>CBT Kiosk - Mode Ujian</AssemblyTitle>
+    <AssemblyName>CbtKioskSetup</AssemblyName>
+    <RootNamespace>CbtKiosk.Setup</RootNamespace>
+    <Product>CBT Kiosk - Pengaturan</Product>
+    <AssemblyTitle>CBT Kiosk - Aplikasi Pengaturan</AssemblyTitle>
     <Company>SMK Data</Company>
     <Version>1.6.0</Version>
     <FileVersion>1.6.0.0</FileVersion>
@@ -27,10 +27,22 @@
     <DebugType>none</DebugType>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <NoWarn>CA1416;NU1701</NoWarn>
+    <!-- The shared sources are compiled here as well, so the two apps can never drift apart. -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="SetupForm.cs" />
+    <Compile Include="..\CbtKiosk\AppSettings.cs" Link="Shared\AppSettings.cs" />
+    <Compile Include="..\CbtKiosk\AutoStart.cs" Link="Shared\AutoStart.cs" />
+    <Compile Include="..\CbtKiosk\Hash.cs" Link="Shared\Hash.cs" />
+    <Compile Include="..\CbtKiosk\KioskClient.cs" Link="Shared\KioskClient.cs" />
+    <Compile Include="..\CbtKiosk\Logger.cs" Link="Shared\Logger.cs" />
   </ItemGroup>
 
 </Project>

@@ -14,6 +14,7 @@ diambil dari server CBT** — dengan **password cadangan offline** bila internet
 
 | Fitur | Keterangan |
 |---|---|
+| **Aplikasi pengaturan (baru)** | `CbtKioskSetup.exe` — atur semuanya lewat jendela bertab (Umum, Keamanan, Startup, Bantuan). Tidak perlu lagi menjalankan `--settings` dari console. |
 | **Buka URL ujian** | URL `https://cbt.smkdata.sch.id` sudah tertanam; bisa diubah di Pengaturan. |
 | **Mode kios penuh layar** | Tanpa bingkai, selalu di atas, maksimal, auto-fokus. |
 | **Pintasan keyboard** | **F5** = muat ulang halaman ujian, **Ctrl+Alt+Q** = keluar (minta password). Selalu aktif — bekerja walaupun halaman ujian sedang difokus. |
@@ -74,6 +75,31 @@ Aplikasi bersifat **portabel** (self-contained): tidak perlu memasang .NET.
 
 ### 3.2 Mengatur aplikasi (dilakukan pengawas/admin)
 
+Cara termudah: gunakan **aplikasi pengaturan** `CbtKioskSetup.exe` — tidak perlu console lagi.
+
+1. Klik kanan **`CbtKioskSetup.exe`** → **Run as administrator** (agar pengaturan bisa disimpan
+   untuk semua pengguna di `%ProgramData%`).
+2. Isi pada tab yang tersedia:
+
+   | Tab | Isi |
+   |---|---|
+   | **Umum & Koneksi** | **URL ujian** (yang dibuka saat ujian, default `https://cbt.smkdata.sch.id`), **Base URL** (domain yang diizinkan), **Endpoint password** (default `https://cbt.smkdata.sch.id/api/kiosk/settings`), **Fallback online** (opsional), pengaturan timeout/percobaan. |
+   | **Keamanan & Penguncian** | **Password cadangan offline**, **Password pengaturan**, opsi lockdown (blokir Alt+Tab/Win, zoom, tombol kembali, hapus sesi saat keluar). |
+   | **Startup & Aplikasi** | Lokasi `CbtKiosk.exe`, **auto-start saat Windows menyala** (pengguna ini atau semua pengguna, registry atau Scheduled Task), Pemeliharaan, cek WebView2. |
+   | **Bantuan** | Ringkasan langkah, lokasi berkas pengaturan, pintasan keyboard. |
+
+3. Klik **Tes koneksi** untuk memastikan endpoint terjangkau.
+4. Klik **Simpan**. Setelah tersimpan, pengaturan langsung berlaku untuk `CbtKiosk.exe`.
+
+Tombol lain: **Muat ulang** (baca ulang berkas), **Bawaan** (kembalikan nilai pabrik),
+**Buka folder log**, **Periksa startup**, **Jalankan CBT Kiosk**.
+
+> Bila dijalankan tanpa hak Administrator, aplikasi menampilkan tombol
+> **"Jalankan sebagai Administrator"** dan hanya dapat menyimpan pengaturan per-pengguna.
+
+<details>
+<summary><b>Cara lama (masih didukung): <code>CbtKiosk.exe --settings</code></b></summary>
+
 1. Klik kanan `CbtKiosk.exe` → **Run as administrator** → jalankan dengan argumen `--settings`:
 
    ```
@@ -83,17 +109,11 @@ Aplikasi bersifat **portabel** (self-contained): tidak perlu memasang .NET.
    (Cara mudah: buat shortcut dengan Target `"C:\lokasi\CbtKiosk.exe" --settings`,
    lalu klik kanan shortcut → Run as administrator.)
 
-2. Isi:
-   - **URL ujian** (yang dibuka saat ujian) — default `https://cbt.smkdata.sch.id`.
-   - **Base URL** — domain yang diizinkan.
-   - **Endpoint password** — default `https://cbt.smkdata.sch.id/api/kiosk/settings`.
-   - **Fallback online** — opsional, mis. endpoint cadangan bila ada.
-   - **Password cadangan offline** — isi bila ingin ada password darurat saat internet mati.
-   - **Password pengaturan** — isi agar siswa tidak bisa membuka Pengaturan dari dalam ujian.
-   - **Jalankan otomatis saat Windows menyala** — centang bila ingin aplikasi terbuka sendiri saat
-     komputer login (lihat bagian 3.5).
-3. Klik **Tes koneksi** untuk memastikan endpoint terjangkau.
-4. Klik **Simpan**.
+2. Isi kolom yang sama seperti di atas, klik **Simpan**.
+
+Tampilan pengaturan di dalam kiosk (tray → *Buka Pengaturan*) tetap tersedia dan memakai
+jendela yang sama.
+</details>
 
 > Tombol **Simpan** ada di bar bawah jendela Pengaturan (selalu terlihat). Isi pengaturan bisa
 > di-scroll bila layar kecil.
@@ -128,7 +148,8 @@ akun khusus ujian. Lihat `docs/PANDUAN-PENGAWAS.md` bagian "Mode Kios Kuat".
 
 ### 3.5 Menjalankan otomatis saat Windows menyala
 
-Di jendela **Pengaturan** → bagian **"Saat Windows menyala (startup)"**:
+Di aplikasi **Pengaturan** (`CbtKioskSetup.exe`) → tab **Startup & Aplikasi** →
+bagian **"Saat Windows menyala (auto-start)"**:
 
 1. Centang **"Jalankan otomatis saat Windows menyala"**.
 2. Pilih cakupan:
@@ -146,10 +167,20 @@ centang lalu **Simpan**.
 
 ## 4. Membangun sendiri
 
-Perlu .NET SDK 8.0.
+Perlu .NET SDK 8.0. Perintah berikut menghasilkan **dua** berkas: aplikasi ujian dan aplikasi
+pengaturan.
 
 ```bash
+# 1) Aplikasi ujian (mode kios)
 dotnet publish src/CbtKiosk/CbtKiosk.csproj \
+  -c Release -r win-x64 --self-contained true \
+  -p:PublishSingleFile=true \
+  -p:IncludeNativeLibrariesForSelfExtract=true \
+  -p:EnableCompressionInSingleFile=true \
+  -o publish/win-x64
+
+# 2) Aplikasi pengaturan
+dotnet publish src/CbtKioskSetup/CbtKioskSetup.csproj \
   -c Release -r win-x64 --self-contained true \
   -p:PublishSingleFile=true \
   -p:IncludeNativeLibrariesForSelfExtract=true \
@@ -157,10 +188,30 @@ dotnet publish src/CbtKiosk/CbtKiosk.csproj \
   -o publish/win-x64
 ```
 
-Hasil: `publish/win-x64/CbtKiosk.exe` (± 70–90 MB, satu berkas, portabel).
+Hasil di `publish/win-x64/`:
+
+| Berkas | Fungsi | Ukuran |
+|---|---|---|
+| `CbtKiosk.exe` | Aplikasi ujian (mode kios). | ± 70–90 MB |
+| `CbtKioskSetup.exe` | Aplikasi pengaturan (menggantikan `--settings`). | ± 60–80 MB |
+
+Keduanya berkas tunggal dan portabel — tidak perlu memasang .NET.
 
 > Build juga bisa dijalankan di Linux/macOS berkat `EnableWindowsTargeting=true`
 > (hanya menghasilkan berkas Windows, tidak bisa dijalankan di sana).
+
+### 4.1 Rilis otomatis (GitHub Actions)
+
+Workflow `.github/workflows/build.yml` membangun kedua aplikasi pada setiap push ke
+`master`/`main`, pada tag `v*`, dan pada *Run workflow* manual. Setelah build sukses, hasilnya
+otomatis **dipublikasikan sebagai Release**:
+
+- Push/tag: tag `v<versi>` (untuk tag) atau `v<versi>-build<N>` (untuk push biasa).
+- Aset rilis: `CbtKiosk.exe`, `CbtKioskSetup.exe`, dan `CbtKiosk-win-x64-<versi>.zip`.
+- Nomor versi diambil dari `<Version>` di `src/CbtKioskSetup/CbtKioskSetup.csproj`.
+
+Untuk membuat rilis bernomor versi resmi (mis. `v1.6.0`): ubah `<Version>` lalu
+`git tag v1.6.0 && git push origin v1.6.0`.
 
 ---
 
@@ -184,14 +235,19 @@ cbt-kiosk/
 ├─ src/CbtKiosk/
 │  ├─ Program.cs          # titik masuk, deteksi --settings, single-instance, bersih-bersih sesi
 │  ├─ MainForm.cs         # jendela kios, WebView2, lockdown, pintasan keyboard, hapus sesi
-│  ├─ SettingsForm.cs     # jendela pengaturan (URL, password, lockdown, startup)
-│  ├─ AutoStart.cs        # daftar/hapus auto-start di registry (Run key)
+│  ├─ SettingsForm.cs     # jendela pengaturan di dalam kios (dipakai tray & --settings)
+│  ├─ AutoStart.cs        # daftar/hapus auto-start di registry / Scheduled Task
 │  ├─ PasswordPrompt.cs   # dialog password
 │  ├─ KioskClient.cs      # HTTP ke endpoint CBT + validasi password + fallback
 │  ├─ AppSettings.cs      # model pengaturan + baca/tulis JSON
 │  ├─ Hash.cs             # SHA-256
 │  ├─ Native.cs           # P/Invoke (keyboard hook)
 │  └─ Logger.cs           # log berkas
+├─ src/CbtKioskSetup/     # APLIKASI PENGATURAN (baru)
+│  ├─ Program.cs          # titik masuk, deteksi Administrator, pencarian CbtKiosk.exe, --kiosk/--reset
+│  ├─ SetupForm.cs        # jendela bertab: Umum, Keamanan, Startup, Bantuan
+│  └─ CbtKioskSetup.csproj# menyusun ulang AppSettings/AutoStart/Hash/KioskClient/Logger dari src/CbtKiosk
+├─ tests/LogicTest/       # uji logika lintas-platform (hash, endpoint, fallback offline)
 ├─ .github/workflows/build.yml
 ├─ docs/PANDUAN-PENGAWAS.md
 └─ README.md
