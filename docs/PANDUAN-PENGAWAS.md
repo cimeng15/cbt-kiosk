@@ -16,8 +16,8 @@ Panduan singkat untuk pengawas/guru yang mengawasi ujian.
      console).
    - Tab **Umum & Koneksi**: periksa **URL ujian** dan **Endpoint password** sudah benar.
    - Klik **Tes koneksi** → harus muncul "OK — endpoint terjangkau".
-   - Tab **Keamanan & Penguncian**: isi **Password cadangan offline** (lihat bagian C) bila perlu,
-     dan **Password pengaturan** bila ingin siswa tidak bisa membuka Pengaturan.
+   - Tab **Keamanan & Penguncian**: ganti **Password darurat (offline)** (lihat bagian C) dan isi
+     **Password pengaturan** bila ingin siswa tidak bisa membuka Pengaturan.
    - Tab **Startup & Aplikasi**: tentukan lokasi `CbtKiosk.exe`, atur auto-start bila perlu.
    - Klik **Simpan**.
 
@@ -45,6 +45,9 @@ Panduan singkat untuk pengawas/guru yang mengawasi ujian.
 
 > Bila password salah/kedaluwarsa, aplikasi menampilkan alasannya:
 > *"Password salah"*, *"Password sudah kedaluwarsa"*, atau *"Tidak dapat menghubungi server"*.
+>
+> Pada pesan *"Password sudah kedaluwarsa"* dan *"server tidak tersedia"* aplikasi **mengingatkan
+> bahwa password darurat offline tetap bisa dipakai** — masukkan password darurat (bagian C).
 
 > **Sesi dihapus saat keluar.** Cookies dan data situs dibersihkan, sehingga saat aplikasi
 > dibuka lagi siswa **harus login ulang**. Ini diatur oleh opsi *"Hapus sesi/cookies saat keluar"*
@@ -52,27 +55,49 @@ Panduan singkat untuk pengawas/guru yang mengawasi ujian.
 
 ---
 
-## C. Password cadangan offline (bila internet/server mati)
+## C. Password darurat offline (internet/server mati ATAU password kedaluwarsa)
 
-Fitur ini untuk keadaan darurat: server CBT tidak bisa dihubungi sama sekali, sehingga password
-dari panel tidak bisa diverifikasi. Password cadangan **disimpan di komputer** dan hanya dipakai
-bila **tidak ada endpoint yang terjangkau**.
+Ini **jaring pengaman** agar pengawas tidak pernah terkunci di luar mode ujian. Password darurat
+disimpan di komputer dan **selalu diterima** untuk keluar:
 
-### Mengatur password cadangan offline
+- internet / server CBT mati total, **atau**
+- password online dari panel CBT sudah **kedaluwarsa** (muncul pesan *"Password sudah kedaluwarsa"*), **atau**
+- server hidup tetapi password online tidak bisa dipakai — password darurat tetap sebagai jalan terakhir.
+
+### Password darurat BAWAAN (sudah aktif sejak awal)
+
+Sejak **v1.7.0** setiap komputer sudah membawa password darurat bawaan, jadi komputer baru pun tidak
+bisa terkunci gara-gara belum diatur:
+
+```
+smkdata2026
+```
+
+> **Penting:** password bawaan ini **berhenti berlaku otomatis** begitu pengawas menyimpan password
+> darurat sendiri. Jadi isi password sendiri di setiap lab, karena `smkdata2026` tercantum di
+> dokumentasi publik.
+
+### Mengatur / mengganti password darurat
 
 1. Buka **aplikasi pengaturan**: klik kanan `CbtKioskSetup.exe` → *Run as administrator*.
    (Alternatif lama: `CbtKiosk.exe --settings`.)
-2. Di tab **Keamanan & Penguncian** → bagian **"Password cadangan offline"**, ketik password
-   darurat, ulangi, lalu **Simpan**.
+2. Tab **Keamanan & Penguncian** → bagian **"Password darurat (offline)"**:
+   - Kolom *Password darurat baru* + *Ulangi password darurat* → isi password darurat Anda.
+   - Biarkan **kosong** bila ingin tetap memakai bawaan `smkdata2026`.
+   - Hilangkan centang *"Pakai password darurat BAWAAN…"* bila kiosk **hanya** boleh dibuka dengan
+     password dari panel CBT (tidak disarankan: bila server mati, komputer tidak bisa dibuka).
+3. Klik **Simpan**. Status di atas kolom akan menunjukkan password mana yang sedang berlaku.
    - Password disimpan sebagai **hash SHA-256** (tidak dalam bentuk teks biasa).
-3. Beri tahu password ini **hanya kepada pengawas** yang berwenang.
+4. Beri tahu password ini **hanya kepada pengawas** yang berwenang.
 
-### Menghapus password cadangan
+### Memeriksa / menghapus
 
-Buka Pengaturan → tab *Keamanan & Penguncian* → tombol **Hapus** → Simpan.
+- Status di tab *Keamanan & Penguncian* selalu menampilkan apakah yang berlaku password **sendiri**,
+  **bawaan pabrik**, atau **tidak ada**.
+- Tombol **Hapus** mengembalikan ke bawaan pabrik (bukan menghapus jaring pengaman).
 
-> **Keamanan:** jaga kerahasiaan password cadangan. Siapa pun yang tahu password ini bisa keluar
-> dari mode ujian meski server mati.
+> **Keamanan:** jaga kerahasiaan password darurat. Siapa pun yang tahu password ini bisa keluar
+> dari mode ujian meski server mati. Ganti `smkdata2026` sebelum ujian pertama.
 
 ---
 
@@ -116,8 +141,8 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v Shell /t
 | "Tidak dapat memulai komponen browser (WebView2)" | WebView2 Runtime belum terpasang. Pasang dari tautan di bagian A.1. |
 | Halaman ujian tidak muncul / kosong | Periksa koneksi internet & **URL ujian** di Pengaturan. |
 | "Password salah" padahal benar | Pastikan password di panel CBT sudah diperbarui dan belum kedaluwarsa; perhatikan **huruf besar/kecil**. |
-| "Password sudah kedaluwarsa" | Perbarui password di panel CBT (menu pengaturan kios). |
-| "Tidak dapat menghubungi server CBT…" | Internet/server mati dan **password cadangan offline belum diatur**. Atur lewat Pengaturan (bagian C). |
+| "Password sudah kedaluwarsa" | Perbarui password di panel CBT (menu pengaturan kios) — **atau** langsung gunakan **password darurat offline** (bagian C), yang tetap berlaku. |
+| "Tidak dapat menghubungi server CBT…" | Internet/server mati dan **password darurat belum pernah diatur** serta bawaan pabrik dimatikan. Pakai bawaan `smkdata2026` atau atur lewat Pengaturan (bagian C). |
 | Tidak bisa menyimpan Pengaturan | Jalankan **`CbtKioskSetup.exe`** sebagai **Administrator** (atau gunakan tombol "Jalankan sebagai Administrator" di banner kuning), supaya pengaturan bersama `%ProgramData%` dapat ditulis. |
 | Aplikasi tidak ikut menyala saat Windows login | Lihat bagian **G. Startup tidak jalan** di bawah. |
 | Aplikasi tetap terkunci & pengawas lupa password | Lihat bagian F. |
@@ -186,7 +211,7 @@ Jalankan `schtasks /Run /TN CbtKiosk` (metode task) — atau — log off lalu lo
 
 ## F. Darurat: pengawas terkunci & tidak tahu password
 
-Bila benar-benar darurat (server mati, password cadangan lupa):
+Bila benar-benar darurat (server mati, password darurat lupa):
 
 1. **Log off / restart** komputer siswa (tombol power). Aplikasi tidak mengubah sistem secara
    permanen, jadi setelah login ulang desktop normal.
@@ -195,6 +220,9 @@ Bila benar-benar darurat (server mati, password cadangan lupa):
      kembalikan shell (bagian D.3).
 2. Buka Pengaturan sebagai Administrator dan atur ulang password.
 
+> **Bantuan cepat:** coba dulu password darurat **bawaan pabrik** `smkdata2026` — selama pengawas
+> belum pernah menggantinya, password ini masih berlaku (bagian C).
+>
 > Jika `DisableTaskMgr` sempat diaktifkan aplikasi lalu komputer dimatikan paksa, nilai tersebut
 > bisa tetap tersisa untuk pengguna itu. Kembalikan dengan menjalankan Pengaturan sebagai
 > Administrator lalu keluar normal, atau:

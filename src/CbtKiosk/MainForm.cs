@@ -244,8 +244,11 @@ public sealed class MainForm : Form
         _modalOpen = true;
         try
         {
+            var hint = _settings.HasEmergencyPassword
+                ? "\n\nBila server mati atau password kedaluwarsa, gunakan PASSWORD DARURAT (offline)."
+                : "";
             using var prompt = new PasswordPrompt("Keluar dari Ujian",
-                "Masukkan password untuk keluar dari mode ujian.\nPassword dikelola oleh pengawas melalui panel CBT.",
+                "Masukkan password untuk keluar dari mode ujian.\nPassword dikelola oleh pengawas melalui panel CBT." + hint,
                 this);
             if (prompt.ShowDialog(this) != DialogResult.OK) return;
 
@@ -268,14 +271,20 @@ public sealed class MainForm : Form
                 ShowError("Password salah.");
                 break;
             case QuitPasswordResult.Expired:
-                ShowError("Password sudah kedaluwarsa. Minta pengawas memperbarui password di panel CBT.");
+                ShowError("Password sudah kedaluwarsa. Minta pengawas memperbarui password di panel CBT." +
+                          (_settings.HasEmergencyPassword
+                              ? "\n\nPassword DARURAT (offline) tetap bisa dipakai untuk keluar."
+                              : ""));
                 break;
             case QuitPasswordResult.Unavailable:
-                ShowError("Server CBT menjawab tetapi password tidak tersedia saat ini.");
+                ShowError("Server CBT menjawab tetapi password tidak tersedia saat ini." +
+                          (_settings.HasEmergencyPassword
+                              ? "\n\nGunakan password DARURAT (offline) untuk keluar."
+                              : ""));
                 break;
             case QuitPasswordResult.Unreachable:
-                ShowError("Tidak dapat menghubungi server CBT dan tidak ada password cadangan offline yang dikonfigurasi.\n\n" +
-                          "Hubungi pengawas.");
+                ShowError("Tidak dapat menghubungi server CBT dan password darurat offline TIDAK aktif di komputer ini.\n\n" +
+                          "Hubungi pengawas / administrator.");
                 break;
         }
     }

@@ -33,7 +33,9 @@ internal static class Program
         Logger.Info($"Base URL      : {settings.BaseUrl}");
         Logger.Info($"Kiosk endpoint: {settings.KioskUrl}");
         Logger.Info($"Fallback URL  : {(string.IsNullOrWhiteSpace(settings.FallbackUrl) ? "(none)" : settings.FallbackUrl)}");
-        Logger.Info($"Offline pwd   : {(string.IsNullOrWhiteSpace(settings.OfflineFallbackPasswordHash) ? "(not set)" : "(set)")}");
+        Logger.Info($"Offline pwd   : {(settings.HasOfflineFallback ? "(custom, diatur pengawas)"
+            : settings.AllowDefaultEmergencyPassword ? $"(BAWAAN PABRIK aktif: {AppSettings.DefaultOfflinePassword})"
+            : "(dimatikan)")}");
         Logger.Info($"Auto-start    : {AutoStart.Describe()}");
 
         var openSettings = args.Any(a =>

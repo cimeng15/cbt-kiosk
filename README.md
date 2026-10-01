@@ -3,7 +3,8 @@
 Aplikasi desktop Windows yang **mengunci komputer siswa agar fokus pada ujian CBT**.
 Saat dijalankan, aplikasi membuka URL ujian secara penuh layar dan memblokir jalan keluar
 (Alt+Tab, tombol Windows, Alt+F4, dsb). Untuk keluar, pengawas memasukkan **password yang
-diambil dari server CBT** — dengan **password cadangan offline** bila internet terputus.
+diambil dari server CBT** — dilengkapi **password darurat (offline)** yang **selalu bisa dipakai**
+walau internet/server mati maupun **password online sudah kedaluwarsa**.
 
 > **Bukan Safe Exam Browser.** Ini aplikasi mandiri yang dibuat khusus untuk
 > `cbt.smkdata.sch.id`, dibangun dengan .NET 8 (WinForms) + WebView2.
@@ -22,19 +23,28 @@ diambil dari server CBT** — dengan **password cadangan offline** bila internet
 | **Batasi navigasi** | Hanya boleh membuka domain CBT (dan domain fallback yang dikonfigurasi). |
 | **Password keluar dari API CBT** | Diambil dari `https://cbt.smkdata.sch.id/api/kiosk/settings`. |
 | **Fallback online** | Endpoint kedua (opsional) dicoba bila endpoint utama tidak terjawab. |
-| **Fallback offline** | Password cadangan yang disimpan di komputer — dipakai **hanya** bila server sama sekali tidak terjangkau. Diatur di menu Pengaturan. |
+| **Password darurat offline (jaring pengaman)** | Password yang tersimpan di komputer dan **selalu diterima** untuk keluar: saat server tidak terjangkau, saat password online **kedaluwarsa**, maupun sebagai jaring pengaman terakhir saat server hidup. Sejak v1.7.0 sudah terisi **bawaan pabrik** sehingga komputer baru pun tidak bisa terkunci. Dapat diganti atau dimatikan di Pengaturan. |
 | **Hapus sesi saat keluar** | Cookies & data situs dihapus saat keluar (dan sisa data dibersihkan saat start), sehingga siswa **wajib login ulang** tiap sesi. Bisa dimatikan di Pengaturan. |
 | **Auto-start saat Windows menyala** | Opsi di Pengaturan untuk menjalankan aplikasi otomatis saat Windows login (per-pengguna, atau semua pengguna bila dijalankan sebagai Administrator). |
+| **Password darurat bawaan** | `smkdata2026` — langsung aktif pada instalasi baru; ganti di Pengaturan (atau matikan) agar hanya pengawas yang tahu. |
 | **Pengaturan terproteksi** | Menu Pengaturan bisa dikunci dengan password agar tidak dibuka siswa. |
 | **Log** | Semua kejadian penting dicatat untuk audit/pengawas. |
 
 ### Urutan pemeriksaan password keluar
 
-1. **Endpoint utama** `cbtKioskURL` — dicoba beberapa kali (default 3×).
-2. **Fallback online** `cbtFallbackURL` — bila dikonfigurasi dan endpoint utama gagal.
-3. **Fallback offline** — password cadangan lokal, **hanya** bila tidak ada endpoint yang terjangkau.
+1. **Password ONLINE** — endpoint utama `cbtKioskURL` (dicoba beberapa kali, default 3×), lalu
+   **fallback online** `cbtFallbackURL` bila dikonfigurasi dan endpoint utama gagal.
+   - Cocok → kiosk keluar.
+   - Tidak cocok → ditolak sebagai *"password salah"* (server jadi penentu utama).
+2. **Password DARURAT (offline)** — password lokal di komputer. Diterima bila:
+   - tidak ada endpoint yang terjangkau (internet/server mati), **atau**
+   - endpoint menjawab tetapi password online **kedaluwarsa** / kosong, **atau**
+   - endpoint menjawab dengan password valid namun yang dimasukkan bukan itu
+     *(jaring pengaman terakhir — pengawas tidak pernah terkunci total)*.
 
-Saat server menjawab, password dari panel CBT **selalu menang** atas password cadangan.
+Bila password darurat belum pernah diatur, yang berlaku adalah **bawaan pabrik**
+(`smkdata2026`). Bawaan ini **otomatis berhenti berlaku** begitu pengawas menyimpan password
+darurat sendiri, dan bisa dimatikan total lewat centang di tab Keamanan.
 
 ---
 
@@ -56,7 +66,8 @@ Aplikasi mengharapkan respons JSON seperti ini dari endpoint:
 Aturan:
 
 - `success != true` atau `data` tidak ada → dianggap gagal.
-- `is_expired == true` → password **ditolak** dengan pesan *"password kedaluwarsa"*.
+- `is_expired == true` → password online **ditolak** dengan pesan *"password kedaluwarsa"*,
+  **tetapi password darurat offline tetap bisa dipakai** untuk keluar.
 - `is_expired == false` tetapi `password_expires_at` sudah lewat → tetap ditolak (pemeriksaan pengaman).
 - `exit_password` kosong → ditolak sebagai *tidak tersedia*.
 - Selain itu, password yang diketik dibandingkan **persis (case-sensitive)** dengan `exit_password`.
@@ -84,7 +95,7 @@ Cara termudah: gunakan **aplikasi pengaturan** `CbtKioskSetup.exe` — tidak per
    | Tab | Isi |
    |---|---|
    | **Umum & Koneksi** | **URL ujian** (yang dibuka saat ujian, default `https://cbt.smkdata.sch.id`), **Base URL** (domain yang diizinkan), **Endpoint password** (default `https://cbt.smkdata.sch.id/api/kiosk/settings`), **Fallback online** (opsional), pengaturan timeout/percobaan. |
-   | **Keamanan & Penguncian** | **Password cadangan offline**, **Password pengaturan**, opsi lockdown (blokir Alt+Tab/Win, zoom, tombol kembali, hapus sesi saat keluar). |
+   | **Keamanan & Penguncian** | **Password darurat (offline)** + centang "pakai bawaan pabrik", **Password pengaturan**, opsi lockdown (blokir Alt+Tab/Win, zoom, tombol kembali, hapus sesi saat keluar). |
    | **Startup & Aplikasi** | Lokasi `CbtKiosk.exe`, **auto-start saat Windows menyala** (pengguna ini atau semua pengguna, registry atau Scheduled Task), Pemeliharaan, cek WebView2. |
    | **Bantuan** | Ringkasan langkah, lokasi berkas pengaturan, pintasan keyboard. |
 
@@ -136,6 +147,8 @@ C:\Users\<user>\AppData\Roaming\CbtKiosk\settings.json   (hanya pengguna ini —
   | **Ctrl + Alt + Q** | Keluar dari ujian (muncul dialog password) |
 
 - **Keluar dari ujian:** tekan **Ctrl+Alt+Q** → masukkan password dari panel CBT.
+  - Bila internet/server mati atau password online **kedaluwarsa**, masukkan **password darurat
+    offline** (bawaan `smkdata2026` bila belum pernah diganti). Lihat bagian C panduan pengawas.
   - Alternatif: klik kanan ikon aplikasi di **system tray** (pojok kanan bawah) →
     *Keluar dari ujian…*. Menu **Buka Pengaturan** juga ada di tray (dilindungi password pengaturan, bila diatur).
 - Setelah keluar, **sesi/cookies dihapus**, jadi saat aplikasi dibuka lagi siswa **harus login ulang**.

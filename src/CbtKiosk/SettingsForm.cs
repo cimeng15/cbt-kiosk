@@ -30,6 +30,7 @@ public sealed class SettingsForm : Form
     private TextBox _txtOfflinePwd, _txtOfflinePwd2;
     private TextBox _txtSettingsPwd, _txtSettingsPwd2;
     private CheckBox _chkBlockNav, _chkAllowZoom, _chkAllowBack, _chkClearSession;
+    private CheckBox _chkDefaultEmergency, _chkShowPasswords;
     private CheckBox _chkAutoStart, _chkAutoStartAllUsers;
     private ComboBox _cboStartupMethod;
     private Button _btnVerifyStartup;
@@ -150,19 +151,19 @@ public sealed class SettingsForm : Form
         Add(_numInterval); y += 34;
 
         // ---- Offline fallback password ----------------------------------------
-        Add(Header("Password cadangan offline", y)); y += 24;
+        Add(Header("Password darurat (offline)", y)); y += 24;
         Add(new Label
         {
-            Text = "Dipakai HANYA bila server tidak dapat dihubungi (internet terputus).\n" +
-                   "Kosongkan bila tidak diperlukan.",
-            Location = new Point(16, y), Size = new Size(600, 34), ForeColor = Color.DimGray,
+            Text = "Selalu diterima untuk keluar - terutama saat internet/server mati ATAU password\n" +
+                   "online kedaluwarsa. Kosongkan bila tidak ingin memakai password sendiri.",
+            Location = new Point(16, y), Size = new Size(620, 34), ForeColor = Color.DimGray,
         }); y += 38;
 
-        _lblOfflineState = new Label { Location = new Point(170, y), Size = new Size(330, 20), ForeColor = Color.DarkGreen };
+        _lblOfflineState = new Label { Location = new Point(170, y), Size = new Size(330, 34), ForeColor = Color.DarkGreen };
         Add(_lblOfflineState);
         _btnClearOffline = new Button { Text = "Hapus", Location = new Point(520, y - 3), Size = new Size(80, 24) };
         _btnClearOffline.Click += BtnClearOffline_Click;
-        Add(_btnClearOffline); y += 26;
+        Add(_btnClearOffline); y += 40;
 
         Add(Caption("Password baru:", y));
         _txtOfflinePwd = new TextBox { Location = new Point(170, y), Width = 430, UseSystemPasswordChar = true };
@@ -170,7 +171,15 @@ public sealed class SettingsForm : Form
 
         Add(Caption("Ulangi password:", y));
         _txtOfflinePwd2 = new TextBox { Location = new Point(170, y), Width = 430, UseSystemPasswordChar = true };
-        Add(_txtOfflinePwd2); y += 34;
+        Add(_txtOfflinePwd2); y += 32;
+
+        _chkDefaultEmergency = new CheckBox
+        {
+            Text = $"Pakai password darurat BAWAAN \"{AppSettings.DefaultOfflinePassword}\" bila kolom di atas kosong",
+            Location = new Point(16, y),
+            Size = new Size(640, 22),
+        };
+        Add(_chkDefaultEmergency); y += 30;
 
         // ---- Settings password -------------------------------------------------
         Add(Header("Password pengaturan", y)); y += 24;
@@ -192,7 +201,21 @@ public sealed class SettingsForm : Form
 
         Add(Caption("Ulangi password:", y));
         _txtSettingsPwd2 = new TextBox { Location = new Point(170, y), Width = 430, UseSystemPasswordChar = true };
-        Add(_txtSettingsPwd2); y += 34;
+        Add(_txtSettingsPwd2); y += 32;
+
+        _chkShowPasswords = new CheckBox
+        {
+            Text = "Tampilkan password yang sedang diketik",
+            Location = new Point(16, y),
+            Size = new Size(320, 22),
+        };
+        _chkShowPasswords.CheckedChanged += (s, e) =>
+        {
+            var reveal = _chkShowPasswords.Checked;
+            foreach (var box in new[] { _txtOfflinePwd, _txtOfflinePwd2, _txtSettingsPwd, _txtSettingsPwd2 })
+                box.UseSystemPasswordChar = !reveal;
+        };
+        Add(_chkShowPasswords); y += 30;
 
         // ---- Lockdown options --------------------------------------------------
         Add(Header("Kunci penguncian (lockdown)", y)); y += 24;
@@ -322,6 +345,7 @@ public sealed class SettingsForm : Form
         _chkAllowZoom.Checked = _settings.AllowZoom;
         _chkAllowBack.Checked = _settings.AllowBackNavigation;
         _chkClearSession.Checked = _settings.ClearSessionOnQuit;
+        _chkDefaultEmergency.Checked = _settings.AllowDefaultEmergencyPassword;
 
         UpdateOfflineState();
         UpdateSettingsPwdState();
@@ -342,9 +366,23 @@ public sealed class SettingsForm : Form
 
     private void UpdateOfflineState()
     {
-        var set = _settings.HasOfflineFallback;
-        _lblOfflineState.Text = set ? "Status: SUDAH diatur (hash tersimpan)." : "Status: belum diatur.";
-        _lblOfflineState.ForeColor = set ? Color.DarkGreen : Color.DimGray;
+        if (_settings.HasOfflineFallback)
+        {
+            _lblOfflineState.Text = "Status: SUDAH diatur (hash tersimpan).";
+            _lblOfflineState.ForeColor = Color.DarkGreen;
+        }
+        else if (_settings.AllowDefaultEmergencyPassword)
+        {
+            _lblOfflineState.Text =
+                $"Status: memakai password BAWAAN \"{AppSettings.DefaultOfflinePassword}\".\n" +
+                "Isi kolom di bawah untuk menggantinya.";
+            _lblOfflineState.ForeColor = Color.FromArgb(180, 95, 6);
+        }
+        else
+        {
+            _lblOfflineState.Text = "Status: TIDAK ada password darurat - keluar hanya bisa dengan password online.";
+            _lblOfflineState.ForeColor = Color.Firebrick;
+        }
     }
 
     private void UpdateSettingsPwdState()
@@ -370,9 +408,10 @@ public sealed class SettingsForm : Form
     private void BtnClearOffline_Click(object sender, EventArgs e)
     {
         if (!_settings.HasOfflineFallback &&
-            string.IsNullOrEmpty(_txtOfflinePwd.Text) && string.IsNullOrEmpty(_txtOfflinePwd2.Text))
+            string.IsNullOrEmpty(_txtOfflinePwd.Text) && string.IsNullOrEmpty(_txtOfflinePwd2.Text) &&
+            !_settings.AllowDefaultEmergencyPassword)
         {
-            MessageBox.Show(this, "Belum ada password cadangan offline yang diatur.",
+            MessageBox.Show(this, "Belum ada password darurat offline yang diatur.",
                 "Pengaturan", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -430,7 +469,7 @@ public sealed class SettingsForm : Form
         {
             if (_txtOfflinePwd.Text != _txtOfflinePwd2.Text)
             {
-                MessageBox.Show(this, "Password cadangan offline tidak sama.", "Pengaturan",
+                MessageBox.Show(this, "Password darurat offline tidak sama.", "Pengaturan",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -460,6 +499,7 @@ public sealed class SettingsForm : Form
         _settings.AllowZoom = _chkAllowZoom.Checked;
         _settings.AllowBackNavigation = _chkAllowBack.Checked;
         _settings.ClearSessionOnQuit = _chkClearSession.Checked;
+        _settings.AllowDefaultEmergencyPassword = _chkDefaultEmergency.Checked;
         _settings.AutoStart = _chkAutoStart.Checked;
         _settings.AutoStartAllUsers = _chkAutoStartAllUsers.Checked;
         _settings.StartupMethod = _cboStartupMethod.SelectedIndex == 1 ? AutoStart.MethodTask : AutoStart.MethodRegistry;

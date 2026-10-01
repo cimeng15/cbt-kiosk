@@ -15,9 +15,9 @@
     <Product>CBT Kiosk - Pengaturan</Product>
     <AssemblyTitle>CBT Kiosk - Aplikasi Pengaturan</AssemblyTitle>
     <Company>SMK Data</Company>
-    <Version>1.6.0</Version>
-    <FileVersion>1.6.0.0</FileVersion>
-    <InformationalVersion>1.6.0</InformationalVersion>
+    <Version>1.7.0</Version>
+    <FileVersion>1.7.0.0</FileVersion>
+    <InformationalVersion>1.7.0</InformationalVersion>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>

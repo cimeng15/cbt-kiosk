@@ -21,10 +21,20 @@ public sealed class AppSettings
     public int KioskAttemptIntervalMs { get; set; } = 1000;
 
     /// <summary>
-    /// Offline fallback password, stored as a lower-case base16 SHA-256 hash. Used only when no
-    /// endpoint is reachable at all (server down / no internet).
+    /// Emergency ("offline") exit password, stored as a lower-case base16 SHA-256 hash. This password
+    /// is ALWAYS accepted - also when the server is reachable and reports a valid or an expired
+    /// password - so a supervisor can never be locked out of a machine.
+    ///
+    /// Leave empty to keep the factory default (see <see cref="DefaultOfflinePassword"/>).
     /// </summary>
     public string OfflineFallbackPasswordHash { get; set; } = "";
+
+    /// <summary>
+    /// When true (the default) the built-in emergency password keeps working as long as no custom
+    /// one is configured. Set false to disable it - then only the online password from the CBT
+    /// panel can unlock the kiosk.
+    /// </summary>
+    public bool AllowDefaultEmergencyPassword { get; set; } = true;
 
     // ---- Lockdown behaviour ----------------------------------------------------
     public bool BlockNavigationKeys { get; set; } = true;
@@ -53,6 +63,38 @@ public sealed class AppSettings
     // ---- Non-persisted helpers -------------------------------------------------
     [JsonIgnore] public string SettingsPath { get; set; } = "";
     [JsonIgnore] public string LoadSource { get; set; } = "";
+
+    /// <summary>
+    /// Factory default emergency password. It is always active until an administrator stores a
+    /// custom offline password through the settings app, so a lab can always be unlocked even on a
+    /// brand-new installation (internet down / server dead / online password expired).
+    ///
+    /// Change it from the settings app; the value below is only the fallback of last resort.
+    /// </summary>
+    public const string DefaultOfflinePassword = "smkdata2026";
+
+    /// <summary>Lower-case SHA-256 hash of <see cref="DefaultOfflinePassword"/>.</summary>
+    public static readonly string DefaultOfflinePasswordHash = Hash.Sha256Hex(DefaultOfflinePassword);
+
+    /// <summary>
+    /// The hash actually used to verify the emergency password: the configured one when the
+    /// administrator set it, otherwise the built-in default. Empty when the default has been
+    /// explicitly disabled and no custom password is set -> no emergency password at all.
+    /// </summary>
+    [JsonIgnore]
+    public string EmergencyPasswordHash =>
+        !string.IsNullOrWhiteSpace(OfflineFallbackPasswordHash) ? OfflineFallbackPasswordHash
+        : AllowDefaultEmergencyPassword ? DefaultOfflinePasswordHash
+        : "";
+
+    /// <summary>True when an emergency password is available (custom or built-in default).</summary>
+    [JsonIgnore]
+    public bool HasEmergencyPassword => !string.IsNullOrWhiteSpace(EmergencyPasswordHash);
+
+    /// <summary>True while the built-in factory password is the one in effect.</summary>
+    [JsonIgnore]
+    public bool UsesDefaultEmergencyPassword =>
+        string.IsNullOrWhiteSpace(OfflineFallbackPasswordHash) && AllowDefaultEmergencyPassword;
 
     [JsonIgnore]
     public bool HasOfflineFallback => !string.IsNullOrWhiteSpace(OfflineFallbackPasswordHash);

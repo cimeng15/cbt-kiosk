@@ -41,7 +41,17 @@ public sealed class KioskClient
 
     public sealed record KioskPassword(string Password, DateTime? ExpiresAt, bool IsExpired, string Endpoint);
 
-    /// <summary>Validates <paramref name="candidate"/> and returns why it was accepted or rejected.</summary>
+    /// <summary>
+    /// Validates <paramref name="candidate"/> and returns why it was accepted or rejected.
+    ///
+    /// Order of checks (an empty configured field means "use the factory default", so an
+    /// installation that was never configured can still be unlocked in an emergency):
+    ///   1. ONLINE  - password from the CBT endpoint(s). Always tried first and preferred.
+    ///   2. OFFLINE - emergency password stored on the machine. Accepted when the server is
+    ///                unreachable, when the online password is expired, when the endpoint
+    ///                answers but cannot hand out a usable password, and (by design) also as a
+    ///                last resort while the server is up - a supervisor must never be locked out.
+    /// </summary>
     public QuitPasswordResult Validate(string candidate)
     {
         if (string.IsNullOrEmpty(candidate)) return QuitPasswordResult.Wrong;
@@ -50,48 +60,67 @@ public sealed class KioskClient
         if (!string.IsNullOrWhiteSpace(_settings.KioskUrl)) endpoints.Add(_settings.KioskUrl);
         if (_settings.HasFallbackUrl && !endpoints.Contains(_settings.FallbackUrl)) endpoints.Add(_settings.FallbackUrl);
 
+        // ---- 1. ONLINE ------------------------------------------------------
         var anyReachable = false;
+        QuitPasswordResult? onlineFailure = null; // set when the server answered but gave no usable password
 
         foreach (var endpoint in endpoints)
         {
-            if (TryFetch(endpoint, out var kp))
+            if (!TryFetch(endpoint, out var kp)) continue;
+
+            anyReachable = true;
+            Logger.Info($"Endpoint '{endpoint}' reachable; is_expired={kp.IsExpired} expires={kp.ExpiresAt:o}");
+
+            if (kp.IsExpired || (kp.ExpiresAt.HasValue && kp.ExpiresAt.Value < DateTime.Now))
             {
-                anyReachable = true;
-                Logger.Info($"Endpoint '{endpoint}' reachable; is_expired={kp.IsExpired} expires={kp.ExpiresAt:o}");
-
-                if (kp.IsExpired || (kp.ExpiresAt.HasValue && kp.ExpiresAt.Value < DateTime.Now))
-                {
-                    Logger.Warn("Endpoint reports an expired password.");
-                    return QuitPasswordResult.Expired;
-                }
-
-                if (string.IsNullOrEmpty(kp.Password))
-                {
-                    Logger.Warn("Endpoint returned an empty password.");
-                    return QuitPasswordResult.Unavailable;
-                }
-
-                return Hash.FixedTimeEquals(candidate, kp.Password)
-                    ? QuitPasswordResult.Correct
-                    : QuitPasswordResult.Wrong;
+                Logger.Warn("Endpoint reports an expired password.");
+                onlineFailure = QuitPasswordResult.Expired;
+                continue;
             }
+
+            if (string.IsNullOrEmpty(kp.Password))
+            {
+                Logger.Warn("Endpoint returned an empty password.");
+                onlineFailure = QuitPasswordResult.Unavailable;
+                continue;
+            }
+
+            if (Hash.FixedTimeEquals(candidate, kp.Password))
+            {
+                Logger.Info("Password accepted by the online CBT endpoint.");
+                return QuitPasswordResult.Correct;
+            }
+
+            Logger.Info("Candidate did not match the online password.");
+            return QuitPasswordResult.Wrong; // the server has the last word
         }
 
-        if (anyReachable)
+        if (anyReachable && onlineFailure == null)
         {
-            // The server answered but we could not use it.
+            // The server answered but we could not make sense of it.
             return QuitPasswordResult.Unavailable;
         }
 
-        // Nothing reachable -> offline fallback.
-        Logger.Warn("No CBT endpoint reachable - trying offline fallback password.");
-        if (_settings.HasOfflineFallback)
+        // ---- 2. OFFLINE (emergency password) --------------------------------
+        if (_settings.HasEmergencyPassword)
         {
+            var origin = _settings.UsesDefaultEmergencyPassword ? "bawaan pabrik" : "yang dikonfigurasi";
+            Logger.Warn(anyReachable
+                ? $"Online password unusable - trying the offline emergency password ({origin})."
+                : $"No CBT endpoint reachable - trying the offline emergency password ({origin}).");
+
             var candidateHash = Hash.Sha256Hex(candidate);
-            return Hash.FixedTimeEquals(candidateHash, _settings.OfflineFallbackPasswordHash.ToLowerInvariant())
-                ? QuitPasswordResult.Correct
-                : QuitPasswordResult.Wrong;
+            if (Hash.FixedTimeEquals(candidateHash, _settings.EmergencyPasswordHash.ToLowerInvariant()))
+            {
+                Logger.Info($"Password accepted by the offline emergency password ({origin}).");
+                return QuitPasswordResult.Correct;
+            }
+
+            // Neither the online password nor the emergency password matched.
+            return anyReachable ? onlineFailure.Value : QuitPasswordResult.Wrong;
         }
+
+        if (anyReachable) return onlineFailure.Value;
 
         return QuitPasswordResult.Unreachable;
     }

@@ -139,6 +139,17 @@ jobs:
           3. Klik **Jalankan CBT Kiosk** (atau dua klik ``CbtKiosk.exe``) untuk memulai mode ujian.
 
           **Baru di versi ini**
+          - **Password darurat (offline) sekarang punya nilai bawaan** = ``smkdata2026``. Komputer baru
+            langsung bisa dibuka walau server mati — tidak perlu setting apa pun lebih dulu.
+          - **Password darurat tetap berlaku walau password online KEDALUWARSA.** Sebelumnya aplikasi
+            berhenti dengan pesan *"password kedaluwarsa"* dan pengawas tidak bisa keluar; sekarang
+            password darurat offline langsung dipakai sebagai jalan keluar.
+          - Password darurat juga jadi jaring pengaman terakhir saat server hidup (server tetap
+            diutamakan: password online diperiksa lebih dulu).
+          - Bawaan otomatis **berhenti berlaku** begitu pengawas menyimpan password darurat sendiri,
+            dan dapat **dimatikan total** lewat centang di tab *Keamanan & Penguncian*.
+          - Aplikasi pengaturan kini menampilkan password darurat mana yang sedang berlaku
+            (sendiri / bawaan pabrik / tidak ada) dan punya opsi **"tampilkan password"**.
           - Aplikasi pengaturan grafis (``CbtKioskSetup.exe``) menggantikan ``CbtKiosk.exe --settings`` dari console.
           - Tab Umum / Keamanan / Startup / Bantuan, tombol **Tes koneksi**, **Periksa startup**, **Jalankan CBT Kiosk**, dan pendeteksi lokasi ``CbtKiosk.exe``.
           - Auto-start dari aplikasi pengaturan menunjuk ke ``CbtKiosk.exe`` (bukan ke aplikasi pengaturan).

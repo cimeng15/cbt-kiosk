@@ -28,7 +28,7 @@ public sealed class SetupForm : Form
     // -- Security tab
     private TextBox _txtOfflinePwd, _txtOfflinePwd2;
     private TextBox _txtSettingsPwd, _txtSettingsPwd2;
-    private CheckBox _chkShowPasswords;
+    private CheckBox _chkShowPasswords, _chkDefaultEmergency;
     private Label _lblOfflineState, _lblSettingsPwdState;
     private Button _btnClearOffline, _btnClearSettingsPwd;
     private CheckBox _chkBlockNav, _chkAllowZoom, _chkAllowBack, _chkClearSession;
@@ -213,19 +213,23 @@ public sealed class SetupForm : Form
         var page = NewPage("Keamanan & Penguncian");
         var l = new FormLayout(page);
 
-        l.Header("Password cadangan offline");
-        l.Hint("Dipakai HANYA bila server tidak dapat dihubungi sama sekali (internet mati).\n" +
-               "Kosongkan bila tidak diperlukan.");
+        l.Header("Password darurat (offline)");
+        l.Hint("SELALU diterima untuk keluar - terutama bila internet/server mati ATAU password online\n" +
+               "sudah kedaluwarsa. Ini jaring pengaman agar pengawas tidak pernah terkunci di luar.");
 
-        _lblOfflineState = new Label { Location = new Point(16, l.Row()), Size = new Size(430, 20), ForeColor = Color.DimGray };
+        _lblOfflineState = new Label { Location = new Point(16, l.Row()), Size = new Size(500, 34), ForeColor = Color.DimGray };
         page.Controls.Add(_lblOfflineState);
         _btnClearOffline = new Button { Text = "Hapus", Location = new Point(526, l.Row() - 3), Size = new Size(80, 26) };
         _btnClearOffline.Click += BtnClearOffline_Click;
         page.Controls.Add(_btnClearOffline);
-        l.Advance(32);
+        l.Advance(40);
 
-        _txtOfflinePwd = l.Password("Password baru:");
-        _txtOfflinePwd2 = l.Password("Ulangi password:");
+        _txtOfflinePwd = l.Password("Password darurat baru:");
+        _txtOfflinePwd2 = l.Password("Ulangi password darurat:");
+
+        _chkDefaultEmergency = l.Check(
+            $"Pakai password darurat BAWAAN \"{AppSettings.DefaultOfflinePassword}\" bila kolom di atas kosong", 30);
+        l.Hint("Hilangkan centang ini bila kiosk hanya boleh dibuka dengan password dari panel CBT.");
 
         l.Header("Password pengaturan");
         l.Hint("Melindungi menu Pengaturan di dalam mode ujian agar tidak dibuka siswa.\n" +
@@ -363,7 +367,7 @@ public sealed class SetupForm : Form
         "\r\n" +
         "LANGKAH CEPAT\r\n" +
         "  1. Tab Umum: periksa URL ujian dan endpoint password, lalu klik Tes koneksi.\r\n" +
-        "  2. Tab Keamanan: isi password cadangan offline (bila perlu) dan password pengaturan.\r\n" +
+        "  2. Tab Keamanan: periksa password darurat offline dan password pengaturan.\r\n" +
         "  3. Tab Startup: tentukan lokasi CbtKiosk.exe dan centang auto-start bila ingin otomatis.\r\n" +
         "  4. Klik Simpan.\r\n" +
         "  5. Salin CbtKiosk.exe ke semua komputer siswa.\r\n" +
@@ -375,8 +379,11 @@ public sealed class SetupForm : Form
         "    " + AppSettings.UserPath + "\r\n" +
         "\r\n" +
         "PASSWORD\r\n" +
-        "  - Password keluar diambil dari server CBT (panel pengawas).\r\n" +
-        "  - Password cadangan offline hanya dipakai bila server tidak terjangkau.\r\n" +
+        "  - Password keluar diambil dari server CBT (panel pengawas) dan SELALU diutamakan.\r\n" +
+        "  - Password darurat offline SELALU diterima juga - dipakai bila server mati,\r\n" +
+        "    bila password online KEDALUWARSA, atau sebagai jaring pengaman terakhir.\r\n" +
+        "  - Bila password darurat belum pernah diubah, yang berlaku adalah bawaan pabrik:\r\n" +
+        "    \"" + AppSettings.DefaultOfflinePassword + "\" (dapat dimatikan di tab Keamanan).\r\n" +
         "  - Semua password disimpan sebagai hash SHA-256, bukan teks biasa:\r\n" +
         "    kolom password boleh dibiarkan kosong untuk mempertahankan yang lama.\r\n" +
         "\r\n" +
@@ -481,6 +488,7 @@ public sealed class SetupForm : Form
         _chkAllowZoom.Checked = _settings.AllowZoom;
         _chkAllowBack.Checked = _settings.AllowBackNavigation;
         _chkClearSession.Checked = _settings.ClearSessionOnQuit;
+        _chkDefaultEmergency.Checked = _settings.AllowDefaultEmergencyPassword;
 
         _txtKioskExe.Text = AutoStart.TargetExePath ?? Program.ResolveKioskExePath();
 
@@ -529,11 +537,23 @@ public sealed class SetupForm : Form
 
     private void UpdatePasswordStates()
     {
-        var offline = _settings.HasOfflineFallback;
-        _lblOfflineState.Text = offline
-            ? "Status: SUDAH diatur. Biarkan kosong untuk mempertahankannya."
-            : "Status: belum diatur.";
-        _lblOfflineState.ForeColor = offline ? Color.DarkGreen : Color.Gray;
+        if (_settings.HasOfflineFallback)
+        {
+            _lblOfflineState.Text = "Status: SUDAH diatur (password sendiri). Biarkan kosong untuk mempertahankannya.";
+            _lblOfflineState.ForeColor = Color.DarkGreen;
+        }
+        else if (_settings.AllowDefaultEmergencyPassword)
+        {
+            _lblOfflineState.Text =
+                $"Status: memakai password BAWAAN \"{AppSettings.DefaultOfflinePassword}\".\n" +
+                "Isi kolom di bawah untuk menggantinya dengan password sendiri.";
+            _lblOfflineState.ForeColor = Color.FromArgb(180, 95, 6);
+        }
+        else
+        {
+            _lblOfflineState.Text = "Status: TIDAK ada password darurat - keluar hanya dengan password online.";
+            _lblOfflineState.ForeColor = Color.Firebrick;
+        }
 
         var settingsPwd = !string.IsNullOrWhiteSpace(_settings.SettingsPasswordHash);
         _lblSettingsPwdState.Text = settingsPwd
@@ -580,9 +600,10 @@ public sealed class SetupForm : Form
     private void BtnClearOffline_Click(object sender, EventArgs e)
     {
         if (!_settings.HasOfflineFallback &&
-            string.IsNullOrEmpty(_txtOfflinePwd.Text) && string.IsNullOrEmpty(_txtOfflinePwd2.Text))
+            string.IsNullOrEmpty(_txtOfflinePwd.Text) && string.IsNullOrEmpty(_txtOfflinePwd2.Text) &&
+            !_settings.AllowDefaultEmergencyPassword)
         {
-            MessageBox.Show(this, "Belum ada password cadangan offline yang diatur.",
+            MessageBox.Show(this, "Belum ada password darurat yang diatur.",
                 "Pengaturan", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -590,7 +611,7 @@ public sealed class SetupForm : Form
         _settings.OfflineFallbackPasswordHash = "";
         _txtOfflinePwd.Text = _txtOfflinePwd2.Text = "";
         UpdatePasswordStates();
-        SetSaved("Password cadangan offline akan dihapus setelah klik Simpan.");
+        SetSaved("Password darurat offline akan dihapus setelah klik Simpan.");
     }
 
     private void BtnClearSettingsPwd_Click(object sender, EventArgs e)
@@ -668,7 +689,7 @@ public sealed class SetupForm : Form
         }
 
         // ---- Passwords: an empty pair keeps whatever is already stored.
-        if (!ApplyPassword(_txtOfflinePwd, _txtOfflinePwd2, "Password cadangan offline",
+        if (!ApplyPassword(_txtOfflinePwd, _txtOfflinePwd2, "Password darurat offline",
                 hash => _settings.OfflineFallbackPasswordHash = hash))
             return;
 
@@ -688,6 +709,7 @@ public sealed class SetupForm : Form
         _settings.AllowZoom = _chkAllowZoom.Checked;
         _settings.AllowBackNavigation = _chkAllowBack.Checked;
         _settings.ClearSessionOnQuit = _chkClearSession.Checked;
+        _settings.AllowDefaultEmergencyPassword = _chkDefaultEmergency.Checked;
         _settings.AutoStart = _chkAutoStart.Checked;
         _settings.AutoStartAllUsers = _chkAutoStartAllUsers.Checked;
         _settings.StartupMethod = _cboStartupMethod.SelectedIndex == 1 ? AutoStart.MethodTask : AutoStart.MethodRegistry;
