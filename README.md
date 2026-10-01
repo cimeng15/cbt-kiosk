@@ -15,7 +15,7 @@ walau internet/server mati maupun **password online sudah kedaluwarsa**.
 
 | Fitur | Keterangan |
 |---|---|
-| **Aplikasi pengaturan (baru)** | `CbtKioskSetup.exe` — atur semuanya lewat jendela bertab (Umum, Keamanan, Startup, Bantuan). Tidak perlu lagi menjalankan `--settings` dari console. |
+| **Aplikasi pengaturan RINGAN** | `CbtKioskTool.exe` — **hanya ± 50 KB** (dulu ± 63 MB). Satu jendela: alamat ujian, tes koneksi, password darurat, password pengaturan, penguncian, dan auto-start. Berjalan dengan .NET Framework yang sudah ada di Windows, jadi **tetap tanpa instalasi**. |
 | **Buka URL ujian** | URL `https://cbt.smkdata.sch.id` sudah tertanam; bisa diubah di Pengaturan. |
 | **Mode kios penuh layar** | Tanpa bingkai, selalu di atas, maksimal, auto-fokus. |
 | **Pintasan keyboard** | **F5** = muat ulang halaman ujian, **Ctrl+Alt+Q** = keluar (minta password). Selalu aktif — bekerja walaupun halaman ujian sedang difokus. |
@@ -82,13 +82,15 @@ Aturan:
 - **Microsoft Edge WebView2 Runtime** — sudah ada di sebagian besar Windows 10/11; bila belum,
   pasang sekali dari <https://go.microsoft.com/fwlink/p/?LinkId=2124703>.
 
-Aplikasi bersifat **portabel** (self-contained): tidak perlu memasang .NET.
+Aplikasi ujian (`CbtKiosk.exe`) bersifat **portabel** (self-contained): tidak perlu memasang .NET.
+Aplikasi pengaturan (`CbtKioskTool.exe`) hanya ± 50 KB dan memakai .NET Framework 4.6.2 yang
+**sudah ada** di Windows 10 (1803+) dan Windows 11 — juga tidak perlu memasang apa pun.
 
 ### 3.2 Mengatur aplikasi (dilakukan pengawas/admin)
 
-Cara termudah: gunakan **aplikasi pengaturan** `CbtKioskSetup.exe` — tidak perlu console lagi.
+Cara termudah: gunakan **aplikasi pengaturan ringan** `CbtKioskTool.exe` — tidak perlu console lagi.
 
-1. Klik kanan **`CbtKioskSetup.exe`** → **Run as administrator** (agar pengaturan bisa disimpan
+1. Klik kanan **`CbtKioskTool.exe`** → **Run as administrator** (agar pengaturan bisa disimpan
    untuk semua pengguna di `%ProgramData%`).
 2. Isi pada tab yang tersedia:
 
@@ -161,8 +163,7 @@ akun khusus ujian. Lihat `docs/PANDUAN-PENGAWAS.md` bagian "Mode Kios Kuat".
 
 ### 3.5 Menjalankan otomatis saat Windows menyala
 
-Di aplikasi **Pengaturan** (`CbtKioskSetup.exe`) → tab **Startup & Aplikasi** →
-bagian **"Saat Windows menyala (auto-start)"**:
+Di aplikasi pengaturan (`CbtKioskTool.exe`) → bagian **"Startup Windows dan aplikasi kiosk"**:
 
 1. Centang **"Jalankan otomatis saat Windows menyala"**.
 2. Pilih cakupan:
@@ -184,7 +185,7 @@ Perlu .NET SDK 8.0. Perintah berikut menghasilkan **dua** berkas: aplikasi ujian
 pengaturan.
 
 ```bash
-# 1) Aplikasi ujian (mode kios)
+# 1) Aplikasi ujian (mode kios) - self-contained .NET 8
 dotnet publish src/CbtKiosk/CbtKiosk.csproj \
   -c Release -r win-x64 --self-contained true \
   -p:PublishSingleFile=true \
@@ -192,23 +193,20 @@ dotnet publish src/CbtKiosk/CbtKiosk.csproj \
   -p:EnableCompressionInSingleFile=true \
   -o publish/win-x64
 
-# 2) Aplikasi pengaturan
-dotnet publish src/CbtKioskSetup/CbtKioskSetup.csproj \
-  -c Release -r win-x64 --self-contained true \
-  -p:PublishSingleFile=true \
-  -p:IncludeNativeLibrariesForSelfExtract=true \
-  -p:EnableCompressionInSingleFile=true \
-  -o publish/win-x64
+# 2) Aplikasi pengaturan RINGAN - .NET Framework 4.6.2 (sudah ada di Windows)
+dotnet build src/CbtKioskTool/CbtKioskTool.csproj \
+  -c Release -o publish/tool
 ```
 
-Hasil di `publish/win-x64/`:
+Hasil:
 
 | Berkas | Fungsi | Ukuran |
 |---|---|---|
-| `CbtKiosk.exe` | Aplikasi ujian (mode kios). | ± 70–90 MB |
-| `CbtKioskSetup.exe` | Aplikasi pengaturan (menggantikan `--settings`). | ± 60–80 MB |
+| `publish/win-x64/CbtKiosk.exe` | Aplikasi ujian (mode kios). | ± 63 MB |
+| `publish/tool/CbtKioskTool.exe` | Aplikasi pengaturan ringan. | **± 50 KB** |
 
-Keduanya berkas tunggal dan portabel — tidak perlu memasang .NET.
+Keduanya cukup dijalankan — tidak perlu memasang .NET, dan aplikasi pengaturnya memakai .NET
+Framework yang sudah tersedia di Windows 10/11.
 
 > Build juga bisa dijalankan di Linux/macOS berkat `EnableWindowsTargeting=true`
 > (hanya menghasilkan berkas Windows, tidak bisa dijalankan di sana).
@@ -220,8 +218,8 @@ Workflow `.github/workflows/build.yml` membangun kedua aplikasi pada setiap push
 otomatis **dipublikasikan sebagai Release**:
 
 - Push: tag `v<versi>-<7 digit commit>`; tag `v<versi>` bila didorong dengan tag `v*`.
-- Aset rilis: `CbtKiosk.exe`, `CbtKioskSetup.exe`, dan `CbtKiosk-win-x64-<versi>.zip`.
-- Nomor versi diambil dari `<Version>` di `src/CbtKioskSetup/CbtKioskSetup.csproj`.
+- Aset rilis: `CbtKiosk.exe`, `CbtKioskTool.exe`, dan `CbtKiosk-win-x64-<versi>.zip`.
+- Nomor versi diambil dari `<Version>` di `src/CbtKiosk/CbtKiosk.csproj`.
 - Tag berbasis commit (bukan nomor build) membuat rilis tetap satu bila GitHub menjalankan dua
   kali untuk satu push.
 
@@ -258,11 +256,16 @@ cbt-kiosk/
 │  ├─ Hash.cs             # SHA-256
 │  ├─ Native.cs           # P/Invoke (keyboard hook)
 │  └─ Logger.cs           # log berkas
-├─ src/CbtKioskSetup/     # APLIKASI PENGATURAN (baru)
-│  ├─ Program.cs          # titik masuk, deteksi Administrator, pencarian CbtKiosk.exe, --kiosk/--reset
-│  ├─ SetupForm.cs        # jendela bertab: Umum, Keamanan, Startup, Bantuan
-│  └─ CbtKioskSetup.csproj# menyusun ulang AppSettings/AutoStart/Hash/KioskClient/Logger dari src/CbtKiosk
+├─ src/CbtKioskTool/      # APLIKASI PENGATURAN RINGAN (± 50 KB, .NET Framework)
+│  ├─ Program.cs          # titik masuk, --kiosk/--reset/--help
+│  ├─ MainForm.cs         # jendela pengaturan (alamat, password, penguncian, startup)
+│  ├─ AppSettings.cs      # model pengaturan (Kiosk.cs) - nama properti sama dengan kiosk
+│  ├─ SettingsStore.cs    # baca/tulis settings.json di lokasi yang sama dengan kiosk
+│  ├─ Json.cs             # pembaca/penulis JSON sendiri (tanpa pustaka) demi ukuran kecil
+│  ├─ AutoStart.cs        # registry Run / Scheduled Task (kompatibel dengan kiosk)
+│  └─ KioskApi.cs         # tes koneksi endpoint + pemeriksaan password online
 ├─ tests/LogicTest/       # uji logika lintas-platform (hash, endpoint, fallback offline)
+├─ tests/ToolTest/        # uji tool: tulis settings.json, lalu dibaca ulang oleh kode kiosk asli
 ├─ .github/workflows/build.yml
 ├─ docs/PANDUAN-PENGAWAS.md
 └─ README.md

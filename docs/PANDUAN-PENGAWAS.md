@@ -6,19 +6,23 @@ Panduan singkat untuk pengawas/guru yang mengawasi ujian.
 
 ## A. Sebelum ujian (persiapan)
 
+> **Dua berkas saja:** `CbtKiosk.exe` (aplikasi ujian, ± 63 MB) dan `CbtKioskTool.exe`
+> (aplikasi pengaturan, **± 50 KB**). Simpan keduanya di folder yang sama, mis. `C:\CbtKiosk\`.
+
 1. **Pastikan WebView2 terpasang.** Di komputer siswa, buka salah satu:
    - *Settings → Apps* dan cari "WebView2", atau
    - jalankan `CbtKiosk.exe`. Bila muncul pesan "Tidak dapat memulai komponen browser",
      pasang WebView2 Runtime dari <https://go.microsoft.com/fwlink/p/?LinkId=2124703>.
 
 2. **Atur aplikasi (sekali saja, sebagai Administrator).**
-   - Klik kanan **`CbtKioskSetup.exe`** → *Run as administrator* (aplikasi pengaturan, tidak perlu
-     console).
-   - Tab **Umum & Koneksi**: periksa **URL ujian** dan **Endpoint password** sudah benar.
-   - Klik **Tes koneksi** → harus muncul "OK — endpoint terjangkau".
-   - Tab **Keamanan & Penguncian**: ganti **Password darurat (offline)** (lihat bagian C) dan isi
-     **Password pengaturan** bila ingin siswa tidak bisa membuka Pengaturan.
-   - Tab **Startup & Aplikasi**: tentukan lokasi `CbtKiosk.exe`, atur auto-start bila perlu.
+   - Klik kanan **`CbtKioskTool.exe`** → *Run as administrator* (aplikasi pengaturan ringan,
+     tidak perlu console; ukurannya hanya ± 50 KB).
+   - Periksa **URL ujian** dan **Endpoint password**, lalu klik **Tes koneksi** → harus muncul
+     "OK — endpoint terjangkau".
+   - Bagian **Password darurat (offline)**: ganti password bawaan (lihat bagian C), dan isi
+     **Password pengaturan** bila ingin siswa tidak bisa membuka menu Pengaturan.
+   - Bagian **Startup Windows dan aplikasi kiosk**: tentukan lokasi `CbtKiosk.exe`, atur
+     auto-start bila perlu.
    - Klik **Simpan**.
 
 3. **Uji coba** di satu komputer: jalankan `CbtKiosk.exe`, pastikan halaman ujian terbuka penuh
@@ -79,9 +83,9 @@ smkdata2026
 
 ### Mengatur / mengganti password darurat
 
-1. Buka **aplikasi pengaturan**: klik kanan `CbtKioskSetup.exe` → *Run as administrator*.
+1. Buka **aplikasi pengaturan**: klik kanan `CbtKioskTool.exe` → *Run as administrator*.
    (Alternatif lama: `CbtKiosk.exe --settings`.)
-2. Tab **Keamanan & Penguncian** → bagian **"Password darurat (offline)"**:
+2. Bagian **"Password darurat (offline)"**:
    - Kolom *Password darurat baru* + *Ulangi password darurat* → isi password darurat Anda.
    - Biarkan **kosong** bila ingin tetap memakai bawaan `smkdata2026`.
    - Hilangkan centang *"Pakai password darurat BAWAAN…"* bila kiosk **hanya** boleh dibuka dengan
@@ -143,7 +147,7 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v Shell /t
 | "Password salah" padahal benar | Pastikan password di panel CBT sudah diperbarui dan belum kedaluwarsa; perhatikan **huruf besar/kecil**. |
 | "Password sudah kedaluwarsa" | Perbarui password di panel CBT (menu pengaturan kios) — **atau** langsung gunakan **password darurat offline** (bagian C), yang tetap berlaku. |
 | "Tidak dapat menghubungi server CBT…" | Internet/server mati dan **password darurat belum pernah diatur** serta bawaan pabrik dimatikan. Pakai bawaan `smkdata2026` atau atur lewat Pengaturan (bagian C). |
-| Tidak bisa menyimpan Pengaturan | Jalankan **`CbtKioskSetup.exe`** sebagai **Administrator** (atau gunakan tombol "Jalankan sebagai Administrator" di banner kuning), supaya pengaturan bersama `%ProgramData%` dapat ditulis. |
+| Tidak bisa menyimpan Pengaturan | Jalankan **`CbtKioskTool.exe`** sebagai **Administrator** (klik kanan → *Run as administrator*), supaya pengaturan bersama `%ProgramData%\CbtKiosk` dapat ditulis. |
 | Aplikasi tidak ikut menyala saat Windows login | Lihat bagian **G. Startup tidak jalan** di bawah. |
 | Aplikasi tetap terkunci & pengawas lupa password | Lihat bagian F. |
 | Ikon tray tidak terlihat | Klik panah **▲** di pojok kanan bawah untuk menampilkan ikon tersembunyi. |
@@ -184,8 +188,8 @@ Windows login. Penyebab tersering, berurutan:
 
 ### Langkah diagnosa cepat
 
-1. Buka **aplikasi pengaturan** (`CbtKioskSetup.exe`, sebagai Administrator) → tab
-   *Startup & Aplikasi* → bagian *Saat Windows menyala (auto-start)*.
+1. Buka **aplikasi pengaturan** (`CbtKioskTool.exe`, sebagai Administrator) → bagian
+   *Startup Windows dan aplikasi kiosk*.
 2. Klik tombol **"Periksa startup"**. Akan muncul laporan: path aplikasi, isi registry Run,
    apakah file di path itu benar-benar ada, dan status scheduled task.
 3. Ikuti hasilnya:
@@ -195,7 +199,7 @@ Windows login. Penyebab tersering, berurutan:
 
 ### Ganti ke metode Scheduled Task (lebih andal)
 
-Di **Pengaturan** → tab *Startup & Aplikasi* → *Metode startup* → pilih
+Di aplikasi pengaturan → bagian *Startup Windows dan aplikasi kiosk* → *Metode* → pilih
 **"Scheduled Task (lebih andal)"** → **Simpan**.
 Aplikasi akan membuat task Windows bernama `CbtKiosk` dengan pemicu **"At logon"**. Cek hasilnya
 di **Task Scheduler** (`taskschd.msc`) → *Task Scheduler Library* → `CbtKiosk`.

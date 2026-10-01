@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    CbtKioskTool - the SMALL settings application for CBT Kiosk.
+
+    Why .NET Framework 4.6.2 instead of .NET 8?
+      * Windows 10 (1803+) and Windows 11 already ship this runtime, so the app runs with no
+        installation at all - the same promise as the self-contained build.
+      * The tool never shows a web page, so it does not need WebView2. The previous settings app
+        (CbtKioskSetup) embedded the whole WebView2 runtime and ended up ~63 MB; this one is a
+        single file of a few hundred kilobytes.
+    The CBT Kiosk itself is untouched and still a self-contained .NET 8 single file.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net462</TargetFramework>
+    <AssemblyName>CbtKioskTool</AssemblyName>
+    <RootNamespace>CbtKioskTool</RootNamespace>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <Product>CBT Kiosk Tool</Product>
+    <AssemblyTitle>CBT Kiosk Tool - Pengaturan Ringan</AssemblyTitle>
+    <Company>SMK Data</Company>
+    <Version>1.7.1</Version>
+    <FileVersion>1.7.1.0</FileVersion>
+    <InformationalVersion>1.7.1</InformationalVersion>
+    <DebugType>none</DebugType>
+    <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+    <!-- Building this Windows-only project from Linux/macOS is fine. -->
+    <NoWarn>CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Lets the project build on Linux/macOS; produces no runtime files. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+</Project>

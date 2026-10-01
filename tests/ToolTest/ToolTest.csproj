@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>ToolTest</AssemblyName>
+    <RootNamespace>CbtKioskTool</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The small settings tool, minus its Windows-only UI (MainForm) and registry code. -->
+    <Compile Include="../../src/CbtKioskTool/Json.cs" />
+    <Compile Include="../../src/CbtKioskTool/Kiosk.cs" />
+    <Compile Include="../../src/CbtKioskTool/SettingsStore.cs" />
+    <Compile Include="../../src/CbtKioskTool/KioskApi.cs" />
+    <!-- The real kiosk sources, so the test proves compatibility with the actual reader. -->
+    <Compile Include="../../src/CbtKiosk/AppSettings.cs" />
+    <Compile Include="../../src/CbtKiosk/Hash.cs" />
+    <Compile Include="../../src/CbtKiosk/Logger.cs" />
+    <Compile Include="../../src/CbtKiosk/KioskClient.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+</Project>

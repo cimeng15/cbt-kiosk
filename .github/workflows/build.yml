@@ -10,8 +10,9 @@ on:
 
 env:
   KIOSK_PROJECT: src/CbtKiosk/CbtKiosk.csproj
-  SETUP_PROJECT: src/CbtKioskSetup/CbtKioskSetup.csproj
+  TOOL_PROJECT: src/CbtKioskTool/CbtKioskTool.csproj
   TEST_PROJECT: tests/LogicTest/LogicTest.csproj
+  TOOL_TEST_PROJECT: tests/ToolTest/ToolTest.csproj
   DOTNET_VERSION: '8.0.x'
 
 permissions:
@@ -41,38 +42,51 @@ jobs:
           -p:EnableCompressionInSingleFile=true
           -o publish/win-x64
 
-      # --------------------------------------------------------- settings app
-      - name: Publish settings app (self-contained single-file EXE)
+      # ------------------------------------------------- tiny settings app
+      # Built against the .NET Framework that ships with Windows 10/11, so the tool is a few
+      # hundred kilobytes instead of tens of megabytes (it never shows a web page, so it does
+      # not need WebView2). Zero extra dependencies on the student PCs.
+      - name: Publish settings tool (small, .NET Framework)
         run: >
-          dotnet publish ${{ env.SETUP_PROJECT }}
-          -c Release -r win-x64 --self-contained true
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:EnableCompressionInSingleFile=true
-          -o publish/win-x64
+          dotnet build ${{ env.TOOL_PROJECT }}
+          -c Release -o publish/tool
 
       # ------------------------------------------------------------ self-check
-      - name: Run logic tests
+      - name: Run kiosk logic tests
         # The tests call the live CBT endpoint, so a network hiccup must not fail the release.
         continue-on-error: true
         run: dotnet run --project ${{ env.TEST_PROJECT }} -c Release
 
+      - name: Run settings tool tests
+        # Writes a settings file with the tool, then reads it back with the REAL kiosk code.
+        run: dotnet run --project ${{ env.TOOL_TEST_PROJECT }} -c Release
+
       - name: Verify the executables exist
         shell: pwsh
         run: |
-          $required = @('publish/win-x64/CbtKiosk.exe', 'publish/win-x64/CbtKioskSetup.exe')
+          $required = @('publish/win-x64/CbtKiosk.exe', 'publish/tool/CbtKioskTool.exe')
           foreach ($file in $required) {
             if (-not (Test-Path $file)) { throw "Berkas hasil build tidak ditemukan: $file" }
-            $size = [math]::Round((Get-Item $file).Length / 1MB, 1)
-            Write-Host "$file -> $size MB"
+            $kb = [math]::Round((Get-Item $file).Length / 1KB, 1)
+            Write-Host "$file -> $kb KB"
           }
+
+      - name: Show the size difference
+        shell: pwsh
+        run: |
+          $kiosk = [math]::Round((Get-Item 'publish/win-x64/CbtKiosk.exe').Length / 1MB, 1)
+          $toolKb = [math]::Round((Get-Item 'publish/tool/CbtKioskTool.exe').Length / 1KB, 1)
+          $toolMb = [math]::Round((Get-Item 'publish/tool/CbtKioskTool.exe').Length / 1MB, 3)
+          Write-Host "CbtKiosk.exe     : $kiosk MB (aplikasi ujian, self-contained)"
+          Write-Host "CbtKioskTool.exe : $toolKb KB ($toolMb MB) - aplikasi pengaturan ringan"
 
       - name: Assemble release folder
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item publish/win-x64/CbtKiosk.exe dist/
-          Copy-Item publish/win-x64/CbtKioskSetup.exe dist/
+          Copy-Item publish/tool/CbtKioskTool.exe dist/
+          Copy-Item publish/tool/CbtKioskTool.exe.config dist/
           Copy-Item README.md dist/README.md
           Copy-Item docs/PANDUAN-PENGAWAS.md dist/PANDUAN-PENGAWAS.md
           Get-ChildItem dist
@@ -86,7 +100,7 @@ jobs:
         id: meta
         shell: pwsh
         run: |
-          $csproj = [xml](Get-Content '${{ env.SETUP_PROJECT }}')
+          $csproj = [xml](Get-Content '${{ env.KIOSK_PROJECT }}')
           $version = ($csproj.Project.PropertyGroup.Version | Where-Object { $_ }).Trim()
           $sha = '${{ github.sha }}'.Substring(0, 7)
 
@@ -127,32 +141,26 @@ jobs:
           Aplikasi Windows untuk ujian CBT (mode kios) — siswa fokus pada ujian.
 
           **Berkas yang tersedia**
-          | Berkas | Fungsi |
-          |---|---|
-          | ``CbtKiosk.exe`` | Aplikasi ujian (mode kios). Dijalankan siswa. |
-          | ``CbtKioskSetup.exe`` | **Aplikasi pengaturan baru** — atur URL, password, dan auto-start tanpa console. |
-          | ``CbtKiosk-win-x64-*.zip`` | Kedua berkas di atas + README + panduan pengawas. |
+          | Berkas | Fungsi | Ukuran |
+          |---|---|---|
+          | ``CbtKiosk.exe`` | Aplikasi ujian (mode kios). Dijalankan siswa. | ± 63 MB (mandiri, tanpa install) |
+          | ``CbtKioskTool.exe`` | **Aplikasi pengaturan ringan** — atur URL, password, dan auto-start. | **± 50 KB** |
+          | ``CbtKiosk-win-x64-*.zip`` | Kedua berkas di atas + README + panduan pengawas. | — |
 
           **Cara pakai singkat**
-          1. Salin kedua ``.exe`` ke folder yang sama, mis. ``C:\CbtKiosk\``.
-          2. Klik kanan ``CbtKioskSetup.exe`` → **Run as administrator**, lalu isi URL ujian & password. Klik **Tes koneksi**, lalu **Simpan**.
+          1. Salin ``CbtKiosk.exe`` dan ``CbtKioskTool.exe`` ke folder yang sama, mis. ``C:\CbtKiosk\``.
+          2. Klik kanan ``CbtKioskTool.exe`` → **Run as administrator**, lalu isi URL ujian dan password. Klik **Tes koneksi**, lalu **Simpan**.
           3. Klik **Jalankan CBT Kiosk** (atau dua klik ``CbtKiosk.exe``) untuk memulai mode ujian.
 
           **Baru di versi ini**
-          - **Password darurat (offline) sekarang punya nilai bawaan** = ``smkdata2026``. Komputer baru
-            langsung bisa dibuka walau server mati — tidak perlu setting apa pun lebih dulu.
-          - **Password darurat tetap berlaku walau password online KEDALUWARSA.** Sebelumnya aplikasi
-            berhenti dengan pesan *"password kedaluwarsa"* dan pengawas tidak bisa keluar; sekarang
-            password darurat offline langsung dipakai sebagai jalan keluar.
-          - Password darurat juga jadi jaring pengaman terakhir saat server hidup (server tetap
-            diutamakan: password online diperiksa lebih dulu).
-          - Bawaan otomatis **berhenti berlaku** begitu pengawas menyimpan password darurat sendiri,
-            dan dapat **dimatikan total** lewat centang di tab *Keamanan & Penguncian*.
-          - Aplikasi pengaturan kini menampilkan password darurat mana yang sedang berlaku
-            (sendiri / bawaan pabrik / tidak ada) dan punya opsi **"tampilkan password"**.
-          - Aplikasi pengaturan grafis (``CbtKioskSetup.exe``) menggantikan ``CbtKiosk.exe --settings`` dari console.
-          - Tab Umum / Keamanan / Startup / Bantuan, tombol **Tes koneksi**, **Periksa startup**, **Jalankan CBT Kiosk**, dan pendeteksi lokasi ``CbtKiosk.exe``.
-          - Auto-start dari aplikasi pengaturan menunjuk ke ``CbtKiosk.exe`` (bukan ke aplikasi pengaturan).
+          - **Aplikasi pengaturan jadi kecil: ``CbtKioskTool.exe`` hanya ± 50 KB** (sebelumnya ``CbtKioskSetup.exe`` ± 63 MB). Dibangun memakai .NET Framework yang sudah ada di Windows 10/11, jadi **tetap tanpa install apa pun** di komputer siswa. Aplikasi pengaturan sebelumnya menyertakan seluruh runtime WebView2 padahal tidak pernah membuka halaman web — sekarang tidak lagi.
+          - ``CbtKioskTool.exe`` menyimpan berkas pengaturan yang **sama persis** dengan yang dibaca ``CbtKiosk.exe``, dan **CbtKiosk.exe tidak berubah** — cukup ganti aplikasi pengaturannya.
+          - Satu jendela tanpa tab: alamat & tes koneksi, password darurat offline, password pengaturan, penguncian, dan startup Windows.
+          - **Password darurat (offline) sekarang punya nilai bawaan** = ``smkdata2026``. Komputer baru langsung bisa dibuka walau server mati — tidak perlu setting apa pun lebih dulu.
+          - **Password darurat tetap berlaku walau password online KEDALUWARSA.** Sebelumnya aplikasi berhenti dengan pesan *"password kedaluwarsa"* dan pengawas tidak bisa keluar; sekarang password darurat offline langsung dipakai sebagai jalan keluar.
+          - Password darurat juga jadi jaring pengaman terakhir saat server hidup (server tetap diutamakan: password online diperiksa lebih dulu).
+          - Bawaan otomatis **berhenti berlaku** begitu pengawas menyimpan password darurat sendiri, dan dapat **dimatikan total** lewat centang di jendela pengaturan.
+          - Pengaturan bisa dikunci dengan password agar siswa tidak bisa membukanya dari dalam kiosk.
 
           ``CbtKiosk.exe --settings`` tetap bisa dipakai bila diperlukan.
 
@@ -170,6 +178,6 @@ jobs:
           files: |
             CbtKiosk-win-x64-${{ steps.meta.outputs.version }}.zip
             dist/CbtKiosk.exe
-            dist/CbtKioskSetup.exe
+            dist/CbtKioskTool.exe
           draft: false
           prerelease: ${{ steps.meta.outputs.prerelease == 'true' }}
