@@ -7,7 +7,7 @@ namespace CbtKioskTool
 {
     /// <summary>
     /// Minimal JSON reader/writer. Written by hand so the tool needs no JSON library at all, which
-    /// keeps CbtKioskTool.exe at a few hundred kilobytes.
+    /// keeps setting-CBT.exe at a few dozen kilobytes.
     /// </summary>
     internal static class Json
     {

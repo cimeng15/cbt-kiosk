@@ -14,7 +14,8 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net462</TargetFramework>
-    <AssemblyName>CbtKioskTool</AssemblyName>
+    <!-- Output file name: setting-CBT.exe (project/folder keep their internal name). -->
+    <AssemblyName>setting-CBT</AssemblyName>
     <RootNamespace>CbtKioskTool</RootNamespace>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
@@ -23,12 +24,12 @@
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <Product>CBT Kiosk Tool</Product>
-    <AssemblyTitle>CBT Kiosk Tool - Pengaturan Ringan</AssemblyTitle>
+    <Product>setting-CBT</Product>
+    <AssemblyTitle>setting-CBT - Pengaturan CBT Kiosk (ringan)</AssemblyTitle>
     <Company>SMK Data</Company>
-    <Version>1.7.1</Version>
-    <FileVersion>1.7.1.0</FileVersion>
-    <InformationalVersion>1.7.1</InformationalVersion>
+    <Version>1.7.2</Version>
+    <FileVersion>1.7.2.0</FileVersion>
+    <InformationalVersion>1.7.2</InformationalVersion>
     <DebugType>none</DebugType>
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
     <!-- Building this Windows-only project from Linux/macOS is fine. -->

@@ -43,7 +43,7 @@ public static class AutoStart
 
     /// <summary>
     /// When set, auto-start is registered for THIS executable instead of the current process.
-    /// The standalone settings app (CbtKioskTool.exe) uses it so that enabling auto-start writes
+    /// The standalone settings app (setting-CBT.exe) uses it so that enabling auto-start writes
     /// the path of the kiosk executable it manages, not its own path.
     /// </summary>
     public static string TargetExePath { get; set; }

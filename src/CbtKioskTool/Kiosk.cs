@@ -21,8 +21,8 @@ namespace CbtKioskTool
         public const string MethodRegistry = "registry";
         public const string MethodTask = "task";
 
-        public const string Product = "CBT Kiosk Tool";
-        public const string Version = "1.7.1";
+        public const string Product = "setting-CBT";
+        public const string Version = "1.7.2";
     }
 
     /// <summary>Mirror of the kiosk's settings.json model (same property names, camel/lower insensitive read).</summary>

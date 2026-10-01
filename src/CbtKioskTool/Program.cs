@@ -5,7 +5,7 @@ using System.Windows.Forms;
 namespace CbtKioskTool
 {
     /// <summary>
-    /// Entry point of CbtKioskTool.exe - the SMALL settings app for CBT Kiosk.
+    /// Entry point of setting-CBT.exe - the SMALL settings app for CBT Kiosk.
     ///
     /// It replaces CbtKioskSetup.exe (a ~63 MB self-contained .NET 8 app that embedded the whole
     /// WebView2 runtime even though it never showed a web page). This tool targets the .NET

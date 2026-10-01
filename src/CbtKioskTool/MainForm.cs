@@ -7,7 +7,7 @@ using System.Windows.Forms;
 namespace CbtKioskTool
 {
     /// <summary>
-    /// The whole user interface of CbtKioskTool.exe: one compact window, no tabs, no console.
+    /// The whole user interface of setting-CBT.exe: one compact window, no tabs, no console.
     /// It writes the very same settings.json the CBT Kiosk reads, so the kiosk itself stays
     /// untouched and the tool can be a few hundred kilobytes instead of tens of megabytes.
     /// </summary>

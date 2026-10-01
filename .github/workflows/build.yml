@@ -64,7 +64,7 @@ jobs:
       - name: Verify the executables exist
         shell: pwsh
         run: |
-          $required = @('publish/win-x64/CbtKiosk.exe', 'publish/tool/CbtKioskTool.exe')
+          $required = @('publish/win-x64/CbtKiosk.exe', 'publish/tool/setting-CBT.exe')
           foreach ($file in $required) {
             if (-not (Test-Path $file)) { throw "Berkas hasil build tidak ditemukan: $file" }
             $kb = [math]::Round((Get-Item $file).Length / 1KB, 1)
@@ -75,18 +75,18 @@ jobs:
         shell: pwsh
         run: |
           $kiosk = [math]::Round((Get-Item 'publish/win-x64/CbtKiosk.exe').Length / 1MB, 1)
-          $toolKb = [math]::Round((Get-Item 'publish/tool/CbtKioskTool.exe').Length / 1KB, 1)
-          $toolMb = [math]::Round((Get-Item 'publish/tool/CbtKioskTool.exe').Length / 1MB, 3)
+          $toolKb = [math]::Round((Get-Item 'publish/tool/setting-CBT.exe').Length / 1KB, 1)
+          $toolMb = [math]::Round((Get-Item 'publish/tool/setting-CBT.exe').Length / 1MB, 3)
           Write-Host "CbtKiosk.exe     : $kiosk MB (aplikasi ujian, self-contained)"
-          Write-Host "CbtKioskTool.exe : $toolKb KB ($toolMb MB) - aplikasi pengaturan ringan"
+          Write-Host "setting-CBT.exe : $toolKb KB ($toolMb MB) - aplikasi pengaturan ringan"
 
       - name: Assemble release folder
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item publish/win-x64/CbtKiosk.exe dist/
-          Copy-Item publish/tool/CbtKioskTool.exe dist/
-          Copy-Item publish/tool/CbtKioskTool.exe.config dist/
+          Copy-Item publish/tool/setting-CBT.exe dist/
+          Copy-Item publish/tool/setting-CBT.exe.config dist/
           Copy-Item README.md dist/README.md
           Copy-Item docs/PANDUAN-PENGAWAS.md dist/PANDUAN-PENGAWAS.md
           Get-ChildItem dist
@@ -140,21 +140,23 @@ jobs:
           @"
           Aplikasi Windows untuk ujian CBT (mode kios) — siswa fokus pada ujian.
 
+          **Berkas pengaturan sekarang bernama ``setting-CBT.exe``** (dulu ``CbtKioskSetup.exe``).
+
           **Berkas yang tersedia**
           | Berkas | Fungsi | Ukuran |
           |---|---|---|
           | ``CbtKiosk.exe`` | Aplikasi ujian (mode kios). Dijalankan siswa. | ± 63 MB (mandiri, tanpa install) |
-          | ``CbtKioskTool.exe`` | **Aplikasi pengaturan ringan** — atur URL, password, dan auto-start. | **± 50 KB** |
+          | ``setting-CBT.exe`` | **Aplikasi pengaturan ringan** — atur URL, password, dan auto-start. | **± 50 KB** |
           | ``CbtKiosk-win-x64-*.zip`` | Kedua berkas di atas + README + panduan pengawas. | — |
 
           **Cara pakai singkat**
-          1. Salin ``CbtKiosk.exe`` dan ``CbtKioskTool.exe`` ke folder yang sama, mis. ``C:\CbtKiosk\``.
-          2. Klik kanan ``CbtKioskTool.exe`` → **Run as administrator**, lalu isi URL ujian dan password. Klik **Tes koneksi**, lalu **Simpan**.
+          1. Salin ``CbtKiosk.exe`` dan ``setting-CBT.exe`` ke folder yang sama, mis. ``C:\CbtKiosk\``.
+          2. Klik kanan ``setting-CBT.exe`` → **Run as administrator**, lalu isi URL ujian dan password. Klik **Tes koneksi**, lalu **Simpan**.
           3. Klik **Jalankan CBT Kiosk** (atau dua klik ``CbtKiosk.exe``) untuk memulai mode ujian.
 
           **Baru di versi ini**
-          - **Aplikasi pengaturan jadi kecil: ``CbtKioskTool.exe`` hanya ± 50 KB** (sebelumnya ``CbtKioskSetup.exe`` ± 63 MB). Dibangun memakai .NET Framework yang sudah ada di Windows 10/11, jadi **tetap tanpa install apa pun** di komputer siswa. Aplikasi pengaturan sebelumnya menyertakan seluruh runtime WebView2 padahal tidak pernah membuka halaman web — sekarang tidak lagi.
-          - ``CbtKioskTool.exe`` menyimpan berkas pengaturan yang **sama persis** dengan yang dibaca ``CbtKiosk.exe``, dan **CbtKiosk.exe tidak berubah** — cukup ganti aplikasi pengaturannya.
+          - **Aplikasi pengaturan baru bernama ``setting-CBT.exe``** (sebelumnya ``CbtKioskSetup.exe``) dan **jauh lebih kecil: hanya ± 50 KB** (sebelumnya ``CbtKioskSetup.exe`` ± 63 MB). Dibangun memakai .NET Framework yang sudah ada di Windows 10/11, jadi **tetap tanpa install apa pun** di komputer siswa. Aplikasi pengaturan sebelumnya menyertakan seluruh runtime WebView2 padahal tidak pernah membuka halaman web — sekarang tidak lagi.
+          - ``setting-CBT.exe`` menyimpan berkas pengaturan yang **sama persis** dengan yang dibaca ``CbtKiosk.exe``, dan **CbtKiosk.exe tidak berubah** — cukup ganti aplikasi pengaturannya.
           - Satu jendela tanpa tab: alamat & tes koneksi, password darurat offline, password pengaturan, penguncian, dan startup Windows.
           - **Password darurat (offline) sekarang punya nilai bawaan** = ``smkdata2026``. Komputer baru langsung bisa dibuka walau server mati — tidak perlu setting apa pun lebih dulu.
           - **Password darurat tetap berlaku walau password online KEDALUWARSA.** Sebelumnya aplikasi berhenti dengan pesan *"password kedaluwarsa"* dan pengawas tidak bisa keluar; sekarang password darurat offline langsung dipakai sebagai jalan keluar.
@@ -178,6 +180,6 @@ jobs:
           files: |
             CbtKiosk-win-x64-${{ steps.meta.outputs.version }}.zip
             dist/CbtKiosk.exe
-            dist/CbtKioskTool.exe
+            dist/setting-CBT.exe
           draft: false
           prerelease: ${{ steps.meta.outputs.prerelease == 'true' }}
