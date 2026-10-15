@@ -92,7 +92,10 @@ public sealed class KioskClient
             }
 
             Logger.Info("Candidate did not match the online password.");
-            return QuitPasswordResult.Wrong; // the server has the last word
+            // Do NOT stop here: the offline emergency password stays available as the very last
+            // resort (see the README check order), so a supervisor is never fully locked out.
+            onlineFailure = QuitPasswordResult.Wrong;
+            break;
         }
 
         if (anyReachable && onlineFailure == null)

@@ -609,8 +609,10 @@ namespace CbtKioskTool
             }
 
             var kioskPath = _txtKioskExe.Text.Trim();
-            if (!string.IsNullOrWhiteSpace(kioskPath))
+            if (!string.IsNullOrWhiteSpace(kioskPath) && File.Exists(kioskPath))
             {
+                // Remember only a path that really exists, so a stale entry can never hide the
+                // automatic detection next time the settings app is opened.
                 AutoStart.TargetExePath = kioskPath;
                 SettingsStore.SaveKioskExePath(kioskPath);
             }
@@ -680,26 +682,7 @@ namespace CbtKioskTool
         private static decimal Clamp(int value, int min, int max) =>
             Math.Min(Math.Max(value, min), max);
 
-        private static string FindKioskExe()
-        {
-            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            var candidates = new[]
-            {
-                Path.Combine(baseDir, "CbtKiosk.exe"),
-                Path.Combine(baseDir, "dist", "CbtKiosk.exe"),
-                Path.Combine(baseDir, "publish", "win-x64", "CbtKiosk.exe"),
-                Path.Combine(baseDir, "..", "CbtKiosk.exe"),
-                Path.Combine(SettingsStore.SharedDirectory, "CbtKiosk.exe"),
-            };
-
-            foreach (var candidate in candidates)
-            {
-                try { if (File.Exists(candidate)) return Path.GetFullPath(candidate); }
-                catch { /* ignore */ }
-            }
-
-            try { return Path.GetFullPath(candidates[0]); } catch { return candidates[0]; }
-        }
+        private static string FindKioskExe() => KioskLocator.Find();
 
         private void ShowStatus(string text)
         {
